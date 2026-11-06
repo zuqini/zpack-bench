@@ -232,7 +232,7 @@ def run(cfg, base, refs, seeds, oracle, nvim_name, jobs=6):
               f'{sum(len(v) for v in new_err.values())} new errors; order-only opts '
               f'{sum(len(o[1]) for o in op.values())} not counted)')
     if oracle:
-        oracle_report(cfg, nvim, lv, lv_env, labels[-1], path, seeds, jobs)
+        ok_all = oracle_report(cfg, nvim, lv, lv_env, b, labels[-1], path, seeds, jobs) and ok_all
     print(f'\noutputs: {out_dir}')
     return ok_all
 
@@ -253,32 +253,43 @@ def norm(path):
     return out
 
 
-def oracle_report(cfg, nvim, lv, env, last, path, seeds, jobs):
-    """lazy.nvim's resolver on the same inputs; informational, it doesn't change the verdict."""
-    print(f'\n## lazy.nvim oracle vs {last} (all + subsets; < lazy.nvim only, > zpack only)')
+def oracle_report(cfg, nvim, lv, env, base, last, path, seeds, jobs):
+    """lazy.nvim's resolver on the same inputs. Disagreements the base already has are known; new ones fail."""
+    print(f'\n## lazy.nvim oracle: {last} vs lazy.nvim, relative to {base} (all + subsets)')
     runs = [('all', 0, 'all.lazy', 'all.txt')] + [('subset', s, f'sub/{s}.lazy', f'sub/{s}.txt')
                                                  for s in range(1, seeds + 1)]
     with ThreadPoolExecutor(jobs) as ex:
         list(ex.map(lambda r: run_lazy(cfg, nvim, lv, r[0], r[1], path(last, r[2]), env), runs))
-    fl, rest, bad = collections.Counter(), collections.Counter(), []
-    for _, _, lz_name, zp_name in runs:
-        lz = {x for x in read(path(last, lz_name)) if x}
-        bad += [f'{lz_name}: {x}' for x in lz if x.startswith('ERROR')]
-        zp = norm(path(last, zp_name))
-        lzm = {x.split()[1]: x.split()[2] for x in lz if x.startswith('P ')}
-        zpm = {x.split()[1]: x.split()[2] for x in zp if x.startswith('P ')}
-        fl.update(f'{n}: lazy.nvim {lzm[n]}, zpack {zpm[n]}' for n in lzm.keys() & zpm.keys() if lzm[n] != zpm[n])
-        lz_names = {' '.join(x.split()[:2]) if x.startswith('P ') else x for x in lz if not x.startswith('ERROR')}
-        zp_names = {' '.join(x.split()[:2]) if x.startswith('P ') else x for x in zp}
-        rest.update([f'< {x}' for x in lz_names - zp_names] + [f'> {x}' for x in zp_names - lz_names])
+
+    def disagreements(label):
+        fl, rest = collections.Counter(), collections.Counter()
+        for _, _, lz_name, zp_name in runs:
+            lz = {x for x in read(path(last, lz_name)) if x and not x.startswith('ERROR')}
+            zp = norm(path(label, zp_name))
+            lzm = {x.split()[1]: x.split()[2] for x in lz if x.startswith('P ')}
+            zpm = {x.split()[1]: x.split()[2] for x in zp if x.startswith('P ')}
+            fl.update(f'{n}: lazy.nvim {lzm[n]}, zpack {zpm[n]}' for n in lzm.keys() & zpm.keys() if lzm[n] != zpm[n])
+            lz_names = {' '.join(x.split()[:2]) if x.startswith('P ') else x for x in lz}
+            zp_names = {' '.join(x.split()[:2]) if x.startswith('P ') else x for x in zp}
+            rest.update([f'< {x}' for x in lz_names - zp_names] + [f'> {x}' for x in zp_names - lz_names])
+        return fl, rest
+
+    bad = [f'{r[2]}: {x}' for r in runs for x in read(path(last, r[2])) if x.startswith('ERROR')]
     for x in bad[:5]:
         print(f'    !! {x[:300]}')
-    print(f'  lazy= disagreements: {sum(fl.values())}')
+    fl_b, rest_b = disagreements(base)
+    fl, rest = disagreements(last)
+    new_fl = {x: c for x, c in fl.items() if c > fl_b.get(x, 0)}
+    new_rest = {x: c for x, c in rest.items() if c > rest_b.get(x, 0) and '<expr>' not in x}
+    print(f'  lazy= disagreements: {sum(fl.values())} ({len(fl)} plugins), new vs {base}: {len(new_fl)}'
+          + ('  !!' if new_fl else ''))
     for x, c in sorted(fl.items()):
-        print(f'    {c:3d} {x}')
-    expr = sum(c for x, c in rest.items() if '<expr>' in x)
-    print('  plugin set / edges:')
+        print(f"    {c:3d} {x}{'  NEW' if x in new_fl else '  (known)'}")
+    print(f'  plugin set / edges: new vs {base}: {len(new_rest)}' + ('  !!' if new_rest else ''))
     for x, c in sorted(rest.items()):
         if '<expr>' not in x:
-            print(f'    {c:3d} {x}')
-    print(f'    <expr> lines (parser placeholder, ignore): {expr}')
+            print(f"    {c:3d} {x}{'  NEW' if x in new_rest else '  (known)'}")
+    print(f"    <expr> lines (parser placeholder, ignore): {sum(c for x, c in rest.items() if '<expr>' in x)}")
+    ok = not bad and not new_fl and not new_rest
+    print('  VERDICT oracle: ' + ('no new disagreements' if ok else 'NEW disagreements or oracle errors'))
+    return ok

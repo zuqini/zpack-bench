@@ -1,4 +1,4 @@
--- nvim -u NONE -l perf.lua <trees_dir> <input_root> <mode> <rounds> <tree> [<tree>...]
+-- nvim -u NONE -l inproc.lua <trees_dir> <input_root> <all|subset|user|file> <rounds> <tree> [<tree>...]
 -- Times import + resolve_all per tree in ONE process, rotating the tree order each round.
 local trees_dir, root, mode, rounds = _G.arg[1], _G.arg[2], _G.arg[3], tonumber(_G.arg[4] or '20')
 local here = debug.getinfo(1, 'S').source:sub(2):match('(.*/)')
@@ -9,11 +9,11 @@ local TREES = {}
 for i = 5, #_G.arg do TREES[#TREES + 1] = _G.arg[i] end
 
 local function fresh_list()
-  if mode == 'user' then
+  if mode == 'user' or mode == 'file' then
     for k in pairs(package.loaded) do
-      if k:match('^plugins%.') then package.loaded[k] = nil end
+      if k == 'plugins' or k:match('^plugins%.') then package.loaded[k] = nil end
     end
-    return (build_user(root))
+    return mode == 'file' and dofile(root) or (build_user(root))
   end
   return (build_lv(root, mode, 0))
 end

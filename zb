@@ -34,6 +34,27 @@ def cmd_probe(cfg, a):
     sys.exit(0 if clean else 1)
 
 
+def cmd_inproc(cfg, a):
+    from zbench import prof
+    prof.inproc(cfg, a.refs, a.input, a.rounds, a.nvim)
+
+
+def cmd_sprof(cfg, a):
+    from zbench import prof, sandbox
+    prof.sprof(cfg, a.ref, sandbox.Row(a.row), a.runs, a.top, a.nvim)
+
+
+def cmd_check(cfg, a):
+    from zbench import diff, perf, probe, sandbox
+    ok = diff.run(cfg, a.base, [a.ref], a.seeds, False, a.nvim)
+    print()
+    ok = probe.run(cfg, [a.base, a.ref], cfg['user_config'], 3, 0, a.nvim) and ok
+    print()
+    perf.run(cfg, [a.ref], a.base, sandbox.expand(a.rows), a.rounds, [a.nvim], {'aa', 'lazy'}, 24, False,
+             out_file(cfg, 'perf'))
+    sys.exit(0 if ok else 1)
+
+
 def cmd_fetch(cfg, a):
     from zbench import diff
     diff.fetch_lazyvim(cfg, a.sha)
@@ -74,6 +95,30 @@ def main():
     s.add_argument('--rounds', type=int, default=0, help='also time startup with a file arg, paired and shuffled')
     s.add_argument('--nvim', default='nightly')
     s.set_defaults(fn=cmd_probe)
+
+    s = sub.add_parser('check', help='diff + probe + perf on the default rows: the one-command answer')
+    s.add_argument('base')
+    s.add_argument('ref')
+    s.add_argument('--rows', default='default')
+    s.add_argument('--rounds', type=int, default=60)
+    s.add_argument('--seeds', type=int, default=40)
+    s.add_argument('--nvim', default='nightly')
+    s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser('inproc', help='in-process import + resolve_all timing per tree')
+    s.add_argument('refs', nargs='+')
+    s.add_argument('--input', default='all', choices=['all', 'subset', 'live'])
+    s.add_argument('--rounds', type=int, default=30)
+    s.add_argument('--nvim', default='nightly')
+    s.set_defaults(fn=cmd_inproc)
+
+    s = sub.add_parser('sprof', help='jit.profile aggregate over fresh startups of one row')
+    s.add_argument('ref')
+    s.add_argument('row')
+    s.add_argument('--runs', type=int, default=30)
+    s.add_argument('--top', type=int, default=45)
+    s.add_argument('--nvim', default='nightly')
+    s.set_defaults(fn=cmd_sprof)
 
     s = sub.add_parser('fetch-lazyvim', help="download LazyVim's source as data (parsed, never executed)")
     s.add_argument('sha', nargs='?', help='default: current main')

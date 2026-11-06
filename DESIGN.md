@@ -224,3 +224,29 @@ An independent review found 8 major and 14 minor issues. Their common theme was 
   - Three are dependencies of nvim-dap (nvim-dap-go, nvim-dap-ruby, one-small-step-for-vimkind), in subsets where nvim-dap is eager under both resolvers. lazy.nvim labels a dependency `lazy=true` even though its eager parent loads it at startup, while zpack labels it `lazy=false`. That is a labelling difference, not a behaviour difference.
 - **0.12 vs lazy.nvim:** trig150 on 0.12 is level with lazy.nvim (−0.15 [−0.57, +0.44]). Every nightly row is clearly faster.
 - **The nvim.log:** a zero-byte `nvim.log` appeared in the repo twice, during perf runs. It didn't reproduce per target. Every child now runs with its cwd at its sandbox root, so a stray log stays there, and `env_for` creates all four XDG dirs.
+
+## Oracle labelling (review round 2)
+- **Breakdown before the fix:** the oracle's 210 `lazy=` disagreements on LazyVim 301a3f7 (all + 40 subsets) between bfd84e3 and lazy.nvim split two ways. No harness bugs were found.
+  - **196 real differences, 9 plugins:** LazyFile, see "zpack parity leads". Example: `gitsigns.nvim`, lazy.nvim lazy=true, zpack lazy=false.
+  - **14 labelling artifacts in `run_lazy.lua`, 3 plugins:** nvim-dap-go, nvim-dap-ruby, one-small-step-for-vimkind. Example: `one-small-step-for-vimkind` in subset 10, a dependency of an nvim-dap that is eager in both. lazy.nvim's own flag says lazy=true, but lazy.nvim loads it at startup with its parent.
+- **The fix:** `run_lazy.lua` now labels a plugin that is lazy only because it is a dependency, with no triggers of its own, as its parent's laziness. That is zpack's meaning of `lazy=`.
+  - Propagating to every dependency instead created a new artifact: mason.nvim and nvim-dap-python have their own `cmd`/keys, and zpack keeps lazy=true for those.
+  - After the fix, exactly the 196 LazyFile lines remain.
+- **Verdict:** the oracle compares both base and ref against the same lazy.nvim output. It fails only on disagreements that are new against the base and labels the rest `(known)`. Checks:
+  - Base 241c9ba: 0 new.
+  - Base 2966b92 (#50): the 9 LazyFile plugins show as NEW.
+  - Bases 85ba638 (#51) and 936649e: 0 new.
+
+## zpack parity leads
+Not acted on here; zpack is unchanged.
+
+**LazyFile-only plugins resolve eager**
+
+| | |
+|---|---|
+| Since | 85ba638 (#51). 2966b92 (#50) still matched lazy.nvim. |
+| Plugins (LazyVim 301a3f7, 196 disagreement lines over all + 40 subsets) | conjure, gitsigns.nvim, indent-blankline.nvim, mini.indentscope, none-ls.nvim, nvim-lint, nvim-paredit, nvim-treesitter-context, nvim-ts-autotag |
+| Spec shape | The only trigger is `event = "LazyFile"`, as in `{ "lewis6991/gitsigns.nvim", event = "LazyFile", opts = {...} }` (editor.lua:134). LazyVim's other LazyFile plugins (todo-comments, vim-illuminate, yanky, aerial, mini.hipatterns) also have keys or cmd, so they stay lazy and don't disagree. |
+| zpack | `lazy_trigger/event.lua` `parse()` counts a name as usable only when it is `VeryLazy` or `exists('##<name>')`. `LazyFile` isn't a Neovim event, so `usable` is false, `lazy.is_lazy()` returns false, and the plugin loads at startup. The unknown name is reported only when the autocmd is registered, so a resolve-only run shows no W line. |
+| lazy.nvim | `M.update_state` sets lazy=true for any non-nil `event`. LazyVim makes the event real through `util/plugin.lua` `lazy_file()`: `Event.mappings.LazyFile = { id = "LazyFile", event = { "BufReadPost", "BufNewFile", "BufWritePre" } }`. In plain lazy.nvim without that mapping, the plugin is still lazy and waits on a `LazyFile` event nothing fires. |
+| Question for zpack | A config ported from LazyVim that keeps `event = "LazyFile"` now gets those plugins at startup instead of on the first file. Is eager-and-warn the intended answer for an unknown event? Or should zpack, like lazy.nvim, keep it lazy, or map `LazyFile` the way it synthesises `VeryLazy`? |

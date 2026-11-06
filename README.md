@@ -48,9 +48,9 @@ What fails the verdict:
 - Flips, including a plugin present on one side only.
 - Structural changes, opts changes that are more than list order, and new errors.
 
-`--oracle` also runs lazy.nvim's own resolver on all extras and the subsets. It lists `lazy=` disagreements first (using lazy.nvim's rule for a plugin without `lazy`), then plugin-set and edge differences. It is informational and doesn't change the verdict. Known disagreements on LazyVim 301a3f7 (details in DESIGN.md):
-- Plugins on LazyVim's own `LazyFile` user event, which lazy.nvim counts as lazy and zpack resolves as eager.
-- Dependencies of an eager parent, which lazy.nvim labels lazy and zpack labels eager. Both load them at startup.
+`--oracle` also runs lazy.nvim's own resolver on all extras and the subsets, and compares both the base and the ref against it. A dependency with no triggers of its own takes its parent's laziness, as zpack labels it. Disagreements the base already has are marked `(known)`. The oracle fails the verdict only on new ones or on oracle errors.
+
+On LazyVim 301a3f7 the known set is 9 plugins whose only trigger is LazyVim's `LazyFile` event. lazy.nvim counts them lazy; zpack has resolved them eager since #51. See "zpack parity leads" in DESIGN.md.
 
 Ignore `<expr>` lines: LazyVim is parsed with Tree-sitter, never executed, and any expression that isn't a literal becomes `"<expr>"`. `fetch-lazyvim` needs an authenticated `gh`.
 

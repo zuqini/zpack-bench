@@ -1,0 +1,9 @@
+{
+  "nvim": { "nightly": "nvim", "0.12": "~/.local/share/bob/v0.12.0/bin/nvim" },
+  "lazy": "~/.local/share/nvim/lazy/lazy.nvim",
+  "zpack_repo": "~/projects/zpack.nvim",
+  "user_config": "~/dotfiles/nvim/.config/nvim",
+  "user_data": "~/.local/share/nvim",
+  "work": "work.noindex",
+  "max_load": 4.0
+}

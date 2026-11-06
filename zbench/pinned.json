@@ -1,0 +1,15 @@
+{
+ "config_sha1": {
+  "cs": "dc67b367c88bce5af76c83fb4a8862158997d714",
+  "eager": "d1d5a1ad02a06c2ee4aab2a0fcad8f54f34cd8bc",
+  "ftd": "07af3ef603e68d65064c7a7f524d2c646024f2c6",
+  "inits": "6b45da450aee16111f4902cb1b2c4970312e9b8e",
+  "inits10": "ba1a1c5196d7a925fff3c754f8f17ea246a6d62e",
+  "miss": "7a9e162b4981b98fecf2b646a1fcddd2b192b178",
+  "realistic": "fb346f2e8c13d217868b33fef4196d33d795f702",
+  "trig": "3909de282d63b3628557477e3a7d1fab1e644866",
+  "trig10": "c9afff3ea868265cae4d70cd9c0a27ae564be742"
+ },
+ "n": 150,
+ "seed": 1
+}

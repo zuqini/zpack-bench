@@ -1,0 +1,34 @@
+realistic150 [nightly] 60 rounds, load 2.3-2.3
+  0a9e71f          cpu med   45.45  wall med   49.78  setups=40 colors=
+  0a9e71f_aa       cpu med   45.69  wall med   49.97  setups=40 colors=
+  241c9ba          cpu med   45.48  wall med   49.78  setups=40 colors=
+  lazy             cpu med   48.02  wall med   51.03  setups=40 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.14 [-0.53, +0.57]
+  d-cpu 0a9e71f - 241c9ba            +0.02 [-0.37, +0.32]
+  d-cpu 0a9e71f - lazy               -2.32 [-3.05, -1.94]
+inits150 [nightly] 60 rounds, load 2.5-2.3
+  0a9e71f          cpu med   65.49  wall med   69.85  setups=90 colors=
+  0a9e71f_aa       cpu med   63.93  wall med   68.73  setups=90 colors=
+  241c9ba          cpu med   64.01  wall med   68.56  setups=90 colors=
+  lazy             cpu med   69.74  wall med   73.02  setups=90 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.25 [-0.64, +0.55]
+  d-cpu 0a9e71f - 241c9ba            +0.58 [+0.11, +0.98]
+  d-cpu 0a9e71f - lazy               -4.41 [-4.78, -4.15]
+trig150 [nightly] 60 rounds, load 2.3-2.2
+  0a9e71f          cpu med   67.09  wall med   71.97  setups=49 colors=
+  0a9e71f_aa       cpu med   67.02  wall med   71.82  setups=49 colors=
+  241c9ba          cpu med   64.66  wall med   69.71  setups=49 colors=
+  lazy             cpu med   69.06  wall med   72.47  setups=49 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.33 [-0.19, +0.62]
+  d-cpu 0a9e71f - 241c9ba            +2.30 [+1.65, +2.76]
+  d-cpu 0a9e71f - lazy               -2.02 [-2.77, -1.41]
+
+d-cpu 0a9e71f minus X, ms [95% CI]
+| row | nvim | load | 0a9e71f_aa | 241c9ba | lazy | cpu |
+|---|---|---|---|---|---|---|
+| realistic150 | nightly | 2.3-2.3 | +0.14 [-0.53, +0.57] | +0.02 [-0.37, +0.32] | -2.32 [-3.05, -1.94] | 45.45 |
+| inits150 | nightly | 2.5-2.3 | +0.25 [-0.64, +0.55] | +0.58 [+0.11, +0.98] | -4.41 [-4.78, -4.15] | 65.49 |
+| trig150 | nightly | 2.3-2.2 | +0.33 [-0.19, +0.62] | +2.30 [+1.65, +2.76] | -2.02 [-2.77, -1.41] | 67.09 |
+raw samples: /Users/zuqini/Projects/zpack-bench/work.noindex/out/perf-20261106-010813.json
+  slower than 241c9ba beyond the A/A + 1 ms: trig150[nightly]
+VERDICT: ok; 1 rows slower than the base

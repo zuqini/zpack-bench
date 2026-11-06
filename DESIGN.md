@@ -192,3 +192,33 @@ PR #54's `all.sh` ran 9 scenarios per size: cs, realistic, file, eager, inits, t
 - Tree labels are the ref when it is a short name or sha, else the sha. `origin/HEAD` used to create nested directories.
 - extra/bughunt runs against bfd84e3, but `probe_harness`'s stale check calls the removed `merge.sort_specs` and prints `CHECK ERR`. Kept as-is per the copy-unchanged decision.
 - Dropped: a LOG.md in the workspace task folder. The coordinator mirrors this file instead.
+
+## Review round 1 (2026-11-06)
+An independent review found 8 major and 14 minor issues. Their common theme was a failed or empty side passing silently.
+
+**Fixed**
+- **M1:** diff fails on errored or empty outputs, even when both sides fail the same way.
+- **M2:** probe takes the union of sections, and fails on a missing dump or stderr the base doesn't have.
+- **M3:** perf prints a VERDICT and exits 1 on ERRORS, SANITY, LOAD or not-faster-than-lazy. `--strict` is gone.
+- **M4:** setups/colors are compared across targets.
+- **M5:** opts are keyed by plugin, and order-only uses a canonical form that keeps keys with their values. Other opts changes fail the verdict.
+- **M6:** the oracle emits lazy.nvim's own lazy rule and compares `lazy=`, on `all` too.
+- **M7:** sprof prepends the profiler to the row's own init and stops at VimLeavePre. It now covers the row's pre-command and setup mode, over perf's whole window.
+- **M8:** `check` runs nightly and 0.12.
+- **Minors:**
+  - m2: flips include plugins present on one side only.
+  - m3: verdicts are per ref.
+  - m7: `lua/zpack_shim.lua` is shared by `run_zpack.lua` and `inproc.lua`.
+  - m9: configured paths are realpath'd.
+  - m10: every zpack import runs with isolated XDG dirs, including the LazyVim jobs (empty dirs) and inproc.
+  - m11: sets are versioned by gen.py's hash.
+  - m13: bughunt reads its paths from the config.
+  - m14: README gaps filled.
+- **Deleted rather than patched:** probe's timing loop (m6), `userspecs.lua` with the `user` mode, and the `config.nvim` no-op (m8).
+- **Not done** (not asked for): m1 (per-round load), m4 (other changed lines are now reported separately but don't fail), m5 (probe compares rep 0), m12 (sandboxes shared across nvim versions).
+
+**What the fixes showed**
+- **The "23" holds:** re-derived with the opts key fixed, the order-only count for 241c9ba → bfd84e3 is still 23 (1 on all extras, 22 over 40 subsets), all mason `ensure_installed`. The old figure was right by coincidence of one changed plugin per file.
+- **Oracle `lazy=` disagreements:** 210 on LazyVim 301a3f7 (all + 40 subsets), across 12 plugins. Nine use LazyVim's own `LazyFile` user event: lazy.nvim counts any `event` as lazy, while zpack resolves these as eager. The other three are dap plugins (nvim-dap-go, nvim-dap-ruby, one-small-step-for-vimkind), which differ only in subsets where their optional parent nvim-dap is absent. That is informational, not a zpack regression: both refs behave the same.
+- **0.12 vs lazy.nvim:** trig150 on 0.12 is level with lazy.nvim (−0.15 [−0.57, +0.44]). Every nightly row is clearly faster.
+- **The nvim.log:** an `nvim.log` appeared in the cwd once during these runs and didn't reproduce afterwards. `env_for` now creates all four XDG dirs.

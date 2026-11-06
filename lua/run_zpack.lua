@@ -1,34 +1,15 @@
--- nvim -u NONE -l run_zpack.lua <zpack_tree> <lv_root> <mode> [seed] [with_opts]
+-- nvim -u NONE -l run_zpack.lua <zpack_tree> <lv_root|spec_file> <all|subset|file> [seed] [with_opts]
 local tree, lv_root, mode, seed, with_opts = _G.arg[1], _G.arg[2], _G.arg[3], tonumber(_G.arg[4] or '0'), _G.arg[5] == '1'
 package.path = tree .. '/lua/?.lua;' .. tree .. '/lua/?/init.lua;' .. package.path
 local here = debug.getinfo(1, 'S').source:sub(2):match('(.*/)')
-local list, failed
+local list, failed = {}, {}
 if mode == 'file' then
-  list, failed = dofile(lv_root), {}
-elseif mode == 'user' then
-  list, failed = dofile(here .. 'userspecs.lua')(lv_root)
+  list = dofile(lv_root)
 else
   list, failed = dofile(here .. 'lvspecs.lua')(lv_root, mode, seed)
 end
 
-local utils = require('zpack.utils')
-local notes = {}
-utils.schedule_notify = function(msg, level)
-  notes[#notes + 1] = { msg = msg, level = level }
-end
-local state = require('zpack.state')
-state.config = { defaults = {} }
-local ctx = { src_with_init = {}, registered_startup_packs = {}, registered_lazy_packs = {}, confirm = false, defaults = {}, _imported_functions = {}, early_plugins = {}, import_paths = {}, missing_owners = {}, settled_owners = {}, import_notes = {}, validated_specs = {}, enabled_results = {}, cond_results = {} }
--- Nothing here may install: an import can add its plugin early.
-vim.pack.add = function() end
-
 local calls = {}
-local function wrap(fn)
-  return function(...)
-    calls[fn] = (calls[fn] or 0) + 1
-    return fn(...)
-  end
-end
 -- count function-form enabled calls
 local function count_enabled(spec, seen)
   if type(spec) ~= 'table' or seen[spec] then return end
@@ -48,33 +29,8 @@ local function count_enabled(spec, seen)
 end
 count_enabled(list, {})
 
-local import_module = require('zpack.import')
--- Refs from zpack.import_run on keep the pass loop there.
-local has_import_run, import_run = pcall(require, 'zpack.import_run')
-local import_all = import_module.import_all or (has_import_run and import_run.import_all)
--- Refs that expose new_graph build the graph by hand; later ones only through import_all.
-local exposes_graph = import_module.new_graph ~= nil
-if exposes_graph then
-  ctx.graph = import_module.new_graph(ctx)
-end
-local imported
-local t0 = vim.uv.hrtime()
-if exposes_graph or not import_all then
-  for _, m in ipairs(list) do
-    import_module.import_specs(m, ctx)
-  end
-  if import_module.flush_notes then
-    import_module.flush_notes(ctx)
-  end
-else
-  -- Refs with zpack.ImportRun return their state and read confirm from the table; earlier ones fill ctx.
-  imported = import_all(list, ctx)
-end
-imported = imported or ctx
-local t1 = vim.uv.hrtime()
--- enabled_results: refs that keep it off the graph take it as an argument.
-local ok, packs = pcall(require('zpack.merge').resolve_all, imported.graph, imported.enabled_results)
-local t2 = vim.uv.hrtime()
+local r = dofile(here .. 'zpack_shim.lua')(list)
+local ok, packs, state, notes = r.ok, r.packs, r.state, r.notes
 local out = {}
 local function p(s) out[#out + 1] = s end
 if not ok then
@@ -88,7 +44,7 @@ if ok then
   for src, e in pairs(state.spec_registry) do
     if e.is_lazy_resolved == nil then
       -- Refs that keep the graph private take the entry; earlier ones its merged spec.
-      local lazy_arg = (exposes_graph or not import_all) and e.merged_spec or e
+      local lazy_arg = r.by_hand and e.merged_spec or e
       e.is_lazy_resolved = require('zpack.lazy').is_lazy(lazy_arg, nil, src)
       computed = true
     end
@@ -162,4 +118,4 @@ end
 
 table.sort(out)
 io.write(table.concat(out, '\n'), '\n')
-io.stderr:write(('TIMING import=%.0fus resolve=%.0fus specs=%d\n'):format((t1 - t0) / 1e3, (t2 - t1) / 1e3, (imported.graph and imported.graph.next_import_order) or state.import_order or -1))
+io.stderr:write(('TIMING import=%.0fus resolve=%.0fus specs=%d\n'):format(r.import_us, r.resolve_us, (r.imported.graph and r.imported.graph.next_import_order) or state.import_order or -1))

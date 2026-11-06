@@ -1,19 +1,19 @@
--- nvim -u NONE -l inproc.lua <trees_dir> <input_root> <all|subset|user|file> <rounds> <tree> [<tree>...]
+-- nvim -u NONE -l inproc.lua <trees_dir> <lv_root|spec_file> <all|subset|file> <rounds> <tree> [<tree>...]
 -- Times import + resolve_all per tree in ONE process, rotating the tree order each round.
 local trees_dir, root, mode, rounds = _G.arg[1], _G.arg[2], _G.arg[3], tonumber(_G.arg[4] or '20')
 local here = debug.getinfo(1, 'S').source:sub(2):match('(.*/)')
 local build_lv = dofile(here .. 'lvspecs.lua')
-local build_user = dofile(here .. 'userspecs.lua')
+local shim = dofile(here .. 'zpack_shim.lua')
 local base_path = package.path
 local TREES = {}
 for i = 5, #_G.arg do TREES[#TREES + 1] = _G.arg[i] end
 
 local function fresh_list()
-  if mode == 'user' or mode == 'file' then
+  if mode == 'file' then
     for k in pairs(package.loaded) do
       if k == 'plugins' or k:match('^plugins%.') then package.loaded[k] = nil end
     end
-    return mode == 'file' and dofile(root) or (build_user(root))
+    return dofile(root)
   end
   return (build_lv(root, mode, 0))
 end
@@ -23,35 +23,8 @@ local function run(tree)
     if k:match('^zpack') then package.loaded[k] = nil end
   end
   package.path = trees_dir .. '/' .. tree .. '/lua/?.lua;' .. trees_dir .. '/' .. tree .. '/lua/?/init.lua;' .. base_path
-  local list = fresh_list()
-  local utils = require('zpack.utils')
-  utils.schedule_notify = function() end
-  local state = require('zpack.state')
-  state.config = { defaults = {} }
-  vim.pack.add = function() end
-  local import = require('zpack.import')
-  -- Refs from zpack.import_run on keep the pass loop there.
-  local has_import_run, import_run = pcall(require, 'zpack.import_run')
-  local import_all = import.import_all or (has_import_run and import_run.import_all)
-  local merge = require('zpack.merge')
-  local ctx = { src_with_init = {}, registered_startup_packs = {}, registered_lazy_packs = {}, confirm = false, defaults = {}, _imported_functions = {}, early_plugins = {}, import_paths = {}, missing_owners = {}, settled_owners = {}, import_notes = {}, validated_specs = {}, enabled_results = {} }
-  -- Refs that expose new_graph build the graph by hand; later ones only through import_all.
-  local exposes_graph = import.new_graph ~= nil
-  if exposes_graph then ctx.graph = import.new_graph(ctx) end
-  collectgarbage('collect')
-  local imported
-  local t0 = vim.uv.hrtime()
-  if exposes_graph or not import_all then
-    for _, m in ipairs(list) do import.import_specs(m, ctx) end
-  else
-    -- Refs with zpack.ImportRun return their state; earlier ones fill ctx.
-    imported = import_all(list, ctx)
-  end
-  imported = imported or ctx
-  local t1 = vim.uv.hrtime()
-  merge.resolve_all(imported.graph, imported.enabled_results)
-  local t2 = vim.uv.hrtime()
-  return (t1 - t0) / 1e3, (t2 - t1) / 1e3
+  local r = shim(fresh_list())
+  return r.import_us, r.resolve_us
 end
 
 local res = {}

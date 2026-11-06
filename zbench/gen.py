@@ -3,6 +3,7 @@
 The base set keeps the RNG call order of the 2026-10-30 bench gen.py, so seed 1 reproduces its specs.
 Scenario transforms are rules over the base kinds; the few choices they make use their own RNG.
 """
+import hashlib
 import json
 import os
 import random
@@ -227,4 +228,5 @@ def generate(set_dir, n, seed):
 
 
 def set_dir(cfg, n, seed):
-    return generate(os.path.join(cfg['work'], 'sets', f'n{n}-s{seed}'), n, seed)
+    version = hashlib.sha1(open(__file__, 'rb').read()).hexdigest()[:8]
+    return generate(os.path.join(cfg['work'], 'sets', f'n{n}-s{seed}-g{version}'), n, seed)

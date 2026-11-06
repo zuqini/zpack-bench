@@ -10,12 +10,11 @@ def inproc(cfg, refs, inp, rounds, nvim_name):
     """Import + resolve_all per tree in one process, rotating order each round."""
     nvim = config.nvim(cfg, nvim_name)
     names = [os.path.basename(trees.build(cfg, r)) for r in refs]
-    env = None
     if inp == 'live':
         root = diff.live_sandbox(cfg)
         root_arg, mode, env = f'{root}/live.lua', 'file', sandbox.env_for(root)
     else:
-        root_arg, mode = diff.lazyvim_dir(cfg), inp
+        root_arg, mode, env = diff.lazyvim_dir(cfg), inp, sandbox.env_for(diff.empty_sandbox(cfg))
     subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'inproc.lua'),
                     os.path.join(cfg['work'], 'trees'), root_arg, mode, str(rounds), *names], check=True, env=env)
 
@@ -23,15 +22,12 @@ def inproc(cfg, refs, inp, rounds, nvim_name):
 def sprof(cfg, ref, row, runs, top, nvim_name):
     """Aggregate jit.profile samples over fresh startups of one row; ms per startup."""
     nvim = config.nvim(cfg, nvim_name)
-    tree = trees.build(cfg, ref)
-    root, sdir = sandbox.ensure(cfg, row, 'zpack')
+    target = (trees.label(cfg, ref), 'zpack', trees.build(cfg, ref))
     out = os.path.join(cfg['work'], 'out', 'sprof.tsv')
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    args = [nvim, '--headless', '-i', 'NONE', '-u', os.path.join(config.LUA, 'sprof_init.lua')]
-    if row.file:
-        args.append(f'{sdir}/sample.rs')
-    args += ['-c', "lua vim.schedule(function() vim.cmd('qa!') end)"]
-    env = dict(sandbox.env_for(root), ZP_TREE=tree, SPROF_OUT=out)
+    start = os.path.join(config.LUA, 'sprof_start.lua')
+    args, env = sandbox.command(cfg, nvim, row, target, prefix=f'dofile({start!r})\n')
+    env['SPROF_OUT'] = out
     for i in range(runs + 3):
         if i == 3 and os.path.exists(out):
             os.unlink(out)

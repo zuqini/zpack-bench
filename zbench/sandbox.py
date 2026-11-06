@@ -51,7 +51,11 @@ def expand(spec):
 
 
 def env_for(root):
-    return dict(os.environ, **{f'XDG_{k}_HOME': f'{root}/{k.lower()}' for k in ('CONFIG', 'DATA', 'STATE', 'CACHE')})
+    """XDG dirs under root. They must exist: without a state dir nvim writes nvim.log into the cwd."""
+    dirs = {f'XDG_{k}_HOME': f'{root}/{k.lower()}' for k in ('CONFIG', 'DATA', 'STATE', 'CACHE')}
+    for d in dirs.values():
+        os.makedirs(d, exist_ok=True)
+    return dict(os.environ, **dirs)
 
 
 def clone(src, dest):
@@ -62,7 +66,7 @@ def clone(src, dest):
 def ensure(cfg, row, kind, seed=1):
     """Sandbox for one manager on one row; shared by every tree of that manager."""
     sdir = gen.set_dir(cfg, row.n, seed)
-    root = os.path.join(cfg['work'], 'sand', f'n{row.n}-s{seed}', row.config + (f'-{row.store}' if row.store != 'store' else '')
+    root = os.path.join(cfg['work'], 'sand', os.path.basename(sdir), row.config + (f'-{row.store}' if row.store != 'store' else '')
                         + (f'@{row.mode}' if row.mode else ''), kind)
     if os.path.isdir(root):
         return root, sdir
@@ -106,12 +110,12 @@ require('lazy').setup({{ spec = {{ {{ import = 'plugins' }} }}, install = {{ mis
     return pre + body
 
 
-def command(cfg, nvim, row, target, seed=1):
-    """target: (label, kind, tree or None). Returns (argv, env)."""
+def command(cfg, nvim, row, target, seed=1, prefix=''):
+    """target: (label, kind, tree or None). Returns (argv, env). `prefix` goes first in the init file."""
     label, kind, tree = target
     root, sdir = ensure(cfg, row, kind, seed)
-    init = f'{root}/init-{label}.lua'
-    gen.write(init, init_text(cfg, row, kind, tree, root))
+    init = f"{root}/init-{label}{'-pre' if prefix else ''}.lua"
+    gen.write(init, prefix + init_text(cfg, row, kind, tree, root))
     args = [nvim, '--headless', '-i', 'NONE', '-u', init]
     if row.file:
         args.append(f'{sdir}/sample.rs')

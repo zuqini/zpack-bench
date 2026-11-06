@@ -24,11 +24,13 @@ def load():
             cfg[key] = env
     cfg = _expand(cfg)
     work = cfg['work']
-    cfg['work'] = os.path.realpath(work if os.path.isabs(work) else os.path.join(ROOT, work))
+    cfg['work'] = work if os.path.isabs(work) else os.path.join(ROOT, work)
     os.makedirs(cfg['work'], exist_ok=True)
+    # Symlinked paths would make sandboxes link back to the real config instead of cloning it.
+    for key in ('lazy', 'zpack_repo', 'user_config', 'user_data', 'work'):
+        cfg[key] = os.path.realpath(cfg[key])
     return cfg
 
 
 def nvim(cfg, name):
-    path = cfg['nvim'].get(name, name)
-    return path if os.sep in path else path
+    return cfg['nvim'].get(name, name)

@@ -25,12 +25,13 @@ def run(cfg, ref, nvim):
     fails += bad
     rows = [f'{s}{"_" if s[-1].isdigit() else ""}{N}' for s in sandbox.SCENARIOS] + [f'realistic{N}@vimenter',
                                                                                          f'realistic{N}@plugin']
-    results = perf.run(cfg, [ref], None, [sandbox.Row(r) for r in rows], 2, [nvim], {'lazy', 'bare', 'native'}, 1,
-                       False, os.path.join(root, 'perf.json'))
+    results = perf.run_rows(cfg, [ref], None, [sandbox.Row(r) for r in rows], 2, [nvim], {'lazy', 'bare', 'native'},
+                            1, os.path.join(root, 'perf.json'))
     for r in results:
-        if r['errors'] or any(v.startswith('no report') for v in r['sanity'].values()):
+        f = [x for x in perf.flags(r, cfg['max_load']) if x in ('ERRORS', 'SANITY')]
+        if f:
             fails.append(r['row'])
-            print(f"FAIL {r['row']}: {r['errors'] or r['sanity']}")
+            print(f"FAIL {r['row']}: {f} {r['errors'] or r['sanity']}")
     try:
         diff.lazyvim_dir(cfg)
     except SystemExit:

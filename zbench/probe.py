@@ -2,12 +2,10 @@
 import collections
 import difflib
 import os
-import random
 import shutil
-import statistics as st
 import subprocess
 
-from . import config, perf, sandbox, stats, trees
+from . import config, perf, sandbox, trees
 
 SAMPLE = 'fn main() {}\n'
 
@@ -53,7 +51,7 @@ def sections(path):
     return out
 
 
-def run(cfg, refs, cfg_dir, reps, rounds, nvim_name, seed=24):
+def run(cfg, refs, cfg_dir, reps, nvim_name):
     nvim = config.nvim(cfg, nvim_name)
     root = make_sandbox(cfg, cfg_dir)
     targets = [(trees.label(cfg, r), trees.build(cfg, r)) for r in refs]
@@ -76,10 +74,19 @@ def run(cfg, refs, cfg_dir, reps, rounds, nvim_name, seed=24):
                 if err:
                     errs[err].append(f'{label}#{rep}')
                 dumps[label].append(sections(out) if os.path.exists(out) else {})
-        for err, where in errs.items():
-            print(f"  stderr in {len(where)}/{reps * len(targets)} runs ({', '.join(where)}): {err[:300]}")
         base = targets[0][0]
-        names = list(dumps[base][0].keys()) if dumps[base] and dumps[base][0] else []
+        for err, where in errs.items():
+            new = [w for w in where if not w.startswith(base + '#')] and not any(w.startswith(base + '#') for w in where)
+            print(f"  {'!! new ' if new else ''}stderr in {len(where)}/{reps * len(targets)} runs "
+                  f"({', '.join(where)}): {err[:300]}")
+            clean = clean and not new
+        missing = [f'{label}#{i}' for label in dumps for i, d in enumerate(dumps[label]) if not d]
+        if missing:
+            print(f"  !! no dump from {', '.join(missing)}")
+            clean = False
+        names = []
+        for d in (d for ds in dumps.values() for d in ds):
+            names += [n for n in d if n not in names]
         for name in names:
             unstable = [label for label in dumps if any(d.get(name) != dumps[label][0].get(name) for d in dumps[label])]
             differs = [label for label in dumps if label != base and dumps[label][0].get(name) != dumps[base][0].get(name)]
@@ -96,23 +103,6 @@ def run(cfg, refs, cfg_dir, reps, rounds, nvim_name, seed=24):
                     print(f'      {x[:200]}')
                 if len(lines) > 30:
                     print(f'      ... {len(lines)} lines')
-    if rounds:
-        print(f'## startup cpu, file mode, {rounds} shuffled rounds')
-        cmds = {label: (argv(nvim, root, tree, 'file', False), sandbox.env_for(root)) for label, tree in targets}
-        cpu = {label: [] for label in cmds}
-        rng = random.Random(seed)
-        load0 = perf.load1()
-        for _ in range(rounds):
-            order = list(cmds)
-            rng.shuffle(order)
-            for label in order:
-                cpu[label].append(perf.once(*cmds[label])[1])
-        print(f'  load {load0:.1f}-{perf.load1():.1f}')
-        for label in cpu:
-            print(f'  {label:<14} cpu med {st.median(cpu[label]):7.2f}')
-        first = targets[0][0]
-        for label in list(cpu)[1:]:
-            print(f'  d-cpu {label} - {first} {stats.fmt(*stats.paired(cpu[label], cpu[first], seed))}')
     print(f'outputs: {out_dir}')
     print('VERDICT: identical state' if clean else 'VERDICT: state differs (see above)')
     return clean

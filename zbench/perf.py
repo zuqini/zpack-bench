@@ -110,12 +110,28 @@ def run_row(cfg, nvim_name, row, targets, rounds, seed):
 
 
 def flags(res, max_load):
+    """Problems that make a row's numbers untrustworthy or a failure."""
     out = []
     if max(res['load']) > max_load:
         out.append(f'LOAD>{max_load:g}')
     if res['errors']:
         out.append('ERRORS')
+    main = res['sanity'][res['main']]
+    checked = {n: v for n, v in res['sanity'].items() if n not in ('bare', 'native')}
+    if main.startswith('no report') or any(v != main for v in checked.values()):
+        out.append('SANITY')
+    lazy = res['d_cpu'].get('lazy')
+    if lazy and lazy[2] > 0:
+        out.append('NOT-FASTER-THAN-LAZY')
     return out
+
+
+def regressions(res):
+    """Base targets the main ref is slower than by more than the A/A's CI upper bound + 1 ms."""
+    aa = res['d_cpu'].get(res['main'] + '_aa')
+    slack = (aa[2] if aa else 0) + 1.0
+    return [n for n, d in res['d_cpu'].items() if n not in ('lazy', 'bare', 'native') and not n.endswith('_aa')
+            and d[1] > slack]
 
 
 def print_row(res, max_load, out=sys.stdout):
@@ -145,7 +161,23 @@ def summary(results, max_load, out=sys.stdout):
                   + ' | '.join(cells) + f" | {r['cpu_median'][r['main']]:.2f} |\n")
 
 
-def run(cfg, refs, base, rows, rounds, nvims, extra, seed, strict, out_path):
+def verdict(results, max_load):
+    bad = [(r['row'] + f"[{r['nvim']}]", flags(r, max_load)) for r in results if flags(r, max_load)]
+    slow = [(r['row'] + f"[{r['nvim']}]", regressions(r)) for r in results if regressions(r)]
+    for row, f in bad:
+        print(f"  !! {row}: {' '.join(f)}" + ('  (rerun when the machine is quiet)' if f == [f'LOAD>{max_load:g}'] else ''))
+    for row, names in slow:
+        print(f"  slower than {', '.join(names)} beyond the A/A + 1 ms: {row}")
+    print('VERDICT: ' + ('ok' if not bad else f'FAIL ({len(bad)} of {len(results)} rows flagged)')
+          + (f'; {len(slow)} rows slower than the base' if slow else ''))
+    return not bad
+
+
+def run(cfg, refs, base, rows, rounds, nvims, extra, seed, out_path):
+    return verdict(run_rows(cfg, refs, base, rows, rounds, nvims, extra, seed, out_path), cfg['max_load'])
+
+
+def run_rows(cfg, refs, base, rows, rounds, nvims, extra, seed, out_path):
     max_load = cfg['max_load']
     results = []
     for nvim_name in nvims:
@@ -159,7 +191,4 @@ def run(cfg, refs, base, rows, rounds, nvims, extra, seed, strict, out_path):
             json.dump(results, open(out_path, 'w'), indent=1)
     summary(results, max_load)
     print(f'raw samples: {out_path}')
-    bad = [r for r in results if flags(r, max_load)]
-    if strict and bad:
-        raise SystemExit(f"--strict: {len(bad)} flagged row(s): {', '.join(r['row'] for r in bad)}")
     return results

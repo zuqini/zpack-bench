@@ -18,8 +18,9 @@ def out_file(cfg, name):
 def cmd_perf(cfg, a):
     from zbench import perf, sandbox
     extra = set(a.targets.split(',')) if a.targets else set()
-    perf.run(cfg, a.refs, a.base, sandbox.expand(a.rows), a.rounds, a.nvim.split(','), extra, a.seed, a.strict,
-             out_file(cfg, 'perf'))
+    ok = perf.run(cfg, a.refs, a.base, sandbox.expand(a.rows), a.rounds, a.nvim.split(','), extra, a.seed,
+                  out_file(cfg, 'perf'))
+    sys.exit(0 if ok else 1)
 
 
 def cmd_diff(cfg, a):
@@ -30,7 +31,7 @@ def cmd_diff(cfg, a):
 
 def cmd_probe(cfg, a):
     from zbench import probe
-    clean = probe.run(cfg, a.refs, a.config or cfg['user_config'], a.reps, a.rounds, a.nvim)
+    clean = probe.run(cfg, a.refs, a.config or cfg['user_config'], a.reps, a.nvim)
     sys.exit(0 if clean else 1)
 
 
@@ -46,12 +47,16 @@ def cmd_sprof(cfg, a):
 
 def cmd_check(cfg, a):
     from zbench import diff, perf, probe, sandbox
-    ok = diff.run(cfg, a.base, [a.ref], a.seeds, False, a.nvim)
-    print()
-    ok = probe.run(cfg, [a.base, a.ref], cfg['user_config'], 3, 0, a.nvim) and ok
-    print()
-    perf.run(cfg, [a.ref], a.base, sandbox.expand(a.rows), a.rounds, [a.nvim], {'aa', 'lazy'}, 24, False,
-             out_file(cfg, 'perf'))
+    nvims = a.nvim.split(',')
+    ok = True
+    for nvim in nvims:
+        ok = diff.run(cfg, a.base, [a.ref], a.seeds, False, nvim) and ok
+        print()
+        ok = probe.run(cfg, [a.base, a.ref], cfg['user_config'], 3, nvim) and ok
+        print()
+    ok = perf.run(cfg, [a.ref], a.base, sandbox.expand(a.rows), a.rounds, nvims, {'aa', 'lazy'}, 24,
+                  out_file(cfg, 'perf')) and ok
+    print('CHECK: ' + ('ok' if ok else 'FAILED (see the VERDICT lines above)'))
     sys.exit(0 if ok else 1)
 
 
@@ -82,7 +87,6 @@ def main():
     s.add_argument('--nvim', default='nightly', help='comma list of names from config.json nvim, e.g. nightly,0.12')
     s.add_argument('--targets', default='aa,lazy', help='extra targets: aa (A/A copy of the first ref), lazy, bare, native')
     s.add_argument('--seed', type=int, default=24, help='round-order and bootstrap seed')
-    s.add_argument('--strict', action='store_true', help='exit 1 if any row ran above max_load or had errors')
     s.set_defaults(fn=cmd_perf)
 
     s = sub.add_parser('diff', help='functional differential: lazy= flips, structure, opts on LazyVim + live config')
@@ -97,7 +101,6 @@ def main():
     s.add_argument('refs', nargs='+', help='zpack refs; the first is the baseline')
     s.add_argument('--config', help='nvim config dir (default: user_config); data is a clone of user_data')
     s.add_argument('--reps', type=int, default=5)
-    s.add_argument('--rounds', type=int, default=0, help='also time startup with a file arg, paired and shuffled')
     s.add_argument('--nvim', default='nightly')
     s.set_defaults(fn=cmd_probe)
 
@@ -107,7 +110,7 @@ def main():
     s.add_argument('--rows', default='default')
     s.add_argument('--rounds', type=int, default=60)
     s.add_argument('--seeds', type=int, default=40)
-    s.add_argument('--nvim', default='nightly')
+    s.add_argument('--nvim', default='nightly,0.12', help='comma list; diff and probe run once per nvim')
     s.set_defaults(fn=cmd_check)
 
     s = sub.add_parser('inproc', help='in-process import + resolve_all timing per tree')

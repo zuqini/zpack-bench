@@ -22,6 +22,17 @@ def cmd_perf(cfg, a):
              out_file(cfg, 'perf'))
 
 
+def cmd_diff(cfg, a):
+    from zbench import diff
+    clean = diff.run(cfg, a.base, a.refs, a.seeds, a.oracle, a.nvim)
+    sys.exit(0 if clean else 1)
+
+
+def cmd_fetch(cfg, a):
+    from zbench import diff
+    diff.fetch_lazyvim(cfg, a.sha)
+
+
 def cmd_gen(cfg, a):
     for n in a.n.split(','):
         print(gen.set_dir(cfg, int(n), a.seed))
@@ -41,6 +52,18 @@ def main():
     s.add_argument('--seed', type=int, default=24, help='round-order and bootstrap seed')
     s.add_argument('--strict', action='store_true', help='exit 1 if any row ran above max_load or had errors')
     s.set_defaults(fn=cmd_perf)
+
+    s = sub.add_parser('diff', help='functional differential: lazy= flips, structure, opts on LazyVim + live config')
+    s.add_argument('base')
+    s.add_argument('refs', nargs='+')
+    s.add_argument('--seeds', type=int, default=40, help='LazyVim subsets (each extra kept with p=0.3)')
+    s.add_argument('--oracle', action='store_true', help='also diff the last ref against lazy.nvim on the subsets')
+    s.add_argument('--nvim', default='nightly')
+    s.set_defaults(fn=cmd_diff)
+
+    s = sub.add_parser('fetch-lazyvim', help="download LazyVim's source as data (parsed, never executed)")
+    s.add_argument('sha', nargs='?', help='default: current main')
+    s.set_defaults(fn=cmd_fetch)
 
     s = sub.add_parser('gen', help='generate synthetic plugin sets (normally implicit)')
     s.add_argument('--n', default='150,300')

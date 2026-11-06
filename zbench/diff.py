@@ -1,10 +1,12 @@
 """Functional differential: LazyVim (all extras + seeded subsets) and the live config through zpack refs.
 
 Reports lazy= flips first, then structure (P/E/W lines), opts, errors; optionally the lazy.nvim oracle.
+An output that failed or holds no plugins fails the verdict: identical failures on both sides are not a pass.
 """
 import collections
 import glob
 import os
+import re
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 from . import config, sandbox, trees
 
 LIVE_SPEC = "return { { import = 'plugins' } }\n"
+STRUCT = ('P ', 'E ', 'W ')
+FAILED = ('ERROR', 'CONFLICT', 'MODFAIL')
 
 
 def lazyvim_dir(cfg):
@@ -47,80 +51,109 @@ def live_sandbox(cfg):
     return root
 
 
-def run_zpack(cfg, nvim, tree, inp, mode, seed, out, env=None):
+def empty_sandbox(cfg):
+    """Empty XDG dirs, so LazyVim's imports never resolve against the host's real config."""
+    root = os.path.join(cfg['work'], 'diff', 'empty')
+    shutil.rmtree(root, ignore_errors=True)
+    os.makedirs(f'{root}/config/nvim')
+    return root
+
+
+def run_zpack(nvim, tree, inp, mode, seed, out, env):
     with open(out, 'w') as f:
         p = subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'run_zpack.lua'), tree, inp, mode,
                             str(seed), '1'], stdout=f, stderr=subprocess.PIPE, text=True, env=env, timeout=300)
     if p.returncode:
         with open(out, 'a') as f:
-            f.write(f'ERROR run_zpack exit {p.returncode}: {p.stderr.strip()[:300]}\n')
+            f.write(f'ERROR run_zpack exit {p.returncode}: {" ".join(p.stderr.split())[:300]}\n')
 
 
-def run_lazy(cfg, nvim, lv, seed, out):
-    p = subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'run_lazy.lua'), lv, 'subset', str(seed)],
-                       capture_output=True, text=True, env=dict(os.environ, LAZY=cfg['lazy']), timeout=300)
+def run_lazy(cfg, nvim, lv, mode, seed, out, env):
+    p = subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'run_lazy.lua'), lv, mode, str(seed)],
+                       capture_output=True, text=True, env=dict(env, LAZY=cfg['lazy']), timeout=300)
     with open(out, 'w') as f:
         f.write('\n'.join(sorted({x for x in p.stdout.splitlines() if x and not x.startswith('X')})) + '\n')
+        if p.returncode or not p.stdout.strip():
+            f.write(f'ERROR run_lazy exit {p.returncode}: {" ".join(p.stderr.split())[:300]}\n')
 
 
-def norm(path):
-    """run_zpack output in run_lazy's shape: plugin names and name -> name edges."""
-    names, edges, out = {}, [], set()
-    for line in open(path):
-        parts = line.split()
-        if line.startswith('P '):
-            names[parts[2][4:]] = parts[1]
-            out.add('P ' + parts[1])
-        elif line.startswith('E '):
-            edges.append((parts[1], parts[3]))
-    for a, b in edges:
-        if a in names and b in names:
-            out.add(f'E {names[a]} -> {names[b]}')
-    return out
+def read(path):
+    return [x.rstrip('\n') for x in open(path)] if os.path.exists(path) else ['ERROR missing output']
 
 
-def lines(path, opts):
-    return [x.rstrip('\n') for x in open(path) if x.startswith('O ') == opts]
+def failures(path):
+    """Why an output can't be compared: a failed run, or no plugins at all."""
+    lines = read(path)
+    bad = [x for x in lines if x.startswith(FAILED) and not x.startswith('MODFAIL')]
+    if not any(x.startswith('P ') for x in lines):
+        bad.append('no P lines')
+    return bad
 
 
 def lazy_map(path):
-    out = {}
-    for x in open(path):
-        if x.startswith('P '):
-            p = x.split()
-            out[p[1]] = p[-1]
-    return out
+    return {x.split()[1]: x.split()[-1] for x in read(path) if x.startswith('P ')}
 
 
 def flips(a, b):
     ma, mb = lazy_map(a), lazy_map(b)
-    return sorted(f'{n}: {ma[n]} -> {mb[n]}' for n in ma.keys() & mb.keys() if ma[n] != mb[n])
+    return sorted(f"{n}: {ma.get(n, 'absent')} -> {mb.get(n, 'absent')}"
+                  for n in ma.keys() | mb.keys() if ma.get(n) != mb.get(n))
 
 
-def changed(a, b, opts=False):
-    la, lb = collections.Counter(lines(a, opts)), collections.Counter(lines(b, opts))
+def changed(a, b, keep):
+    la = collections.Counter(x for x in read(a) if keep(x))
+    lb = collections.Counter(x for x in read(b) if keep(x))
     return [f'< {x}' for x in sorted((la - lb).elements())] + [f'> {x}' for x in sorted((lb - la).elements())]
 
 
+def structural(a, b):
+    return changed(a, b, lambda x: x.startswith(STRUCT))
+
+
+def other(a, b):
+    return changed(a, b, lambda x: not x.startswith(STRUCT + ('O ',)))
+
+
+TOKEN = re.compile(r'"(?:\\.|[^"\\])*"|[{},]|[^{},"=]+=|[^{},"]+')
+
+
+def canon(s):
+    """run_zpack's serialised opts with every list's items sorted and keys kept with their values."""
+    toks, i = TOKEN.findall(s), 0
+
+    def value():
+        nonlocal i
+        t = toks[i]
+        i += 1
+        if t != '{':
+            return t
+        keyed, items = [], []
+        while toks[i] != '}':
+            if toks[i] == ',':
+                i += 1
+                continue
+            if toks[i].endswith('='):
+                k = toks[i]
+                i += 1
+                keyed.append((k, value()))
+            else:
+                items.append(value())
+        i += 1
+        return ('{', tuple(sorted(keyed, key=repr)), tuple(sorted(items, key=repr)))
+    return value()
+
+
+def opts(a, b):
+    """Plugins whose opts differ, split into real changes and order-only ones (same canonical value)."""
+    oa = {x.split()[1]: x.split(' ', 2)[2] for x in read(a) if x.startswith('O ')}
+    ob = {x.split()[1]: x.split(' ', 2)[2] for x in read(b) if x.startswith('O ')}
+    diff = sorted(n for n in oa.keys() | ob.keys() if oa.get(n) != ob.get(n))
+    order = [n for n in diff if n in oa and n in ob and canon(oa[n]) == canon(ob[n])]
+    return [n for n in diff if n not in order], order
+
+
 def errors(path):
-    return [x.strip() for x in open(path) if x.startswith(('ERROR', 'CONFLICT', 'MODFAIL'))]
-
-
-def new_errors(a, b):
-    return sorted(set(errors(b)) - set(errors(a)))
-
-
-def tokens(line):
-    return sorted(line.replace('{', ',').replace('}', ',').split(','))
-
-
-def opts_split(a, b):
-    """Changed O lines, and how many plugins changed only in list order (same tokens)."""
-    ch = changed(a, b, True)
-    old = {x.split()[1]: x[2:] for x in ch if x[0] == '<'}
-    new = {x.split()[1]: x[2:] for x in ch if x[0] == '>'}
-    order = {n for n in old.keys() & new.keys() if tokens(old[n]) == tokens(new[n])}
-    return ch, order
+    return [x for x in read(path) if x.startswith(FAILED)]
 
 
 def run(cfg, base, refs, seeds, oracle, nvim_name, jobs=6):
@@ -128,6 +161,7 @@ def run(cfg, base, refs, seeds, oracle, nvim_name, jobs=6):
     lv = lazyvim_dir(cfg)
     live = live_sandbox(cfg)
     live_env = sandbox.env_for(live)
+    lv_env = sandbox.env_for(empty_sandbox(cfg))
     out_dir = os.path.join(cfg['work'], 'diff', 'out')
     shutil.rmtree(out_dir, ignore_errors=True)
     labels = []
@@ -139,68 +173,110 @@ def run(cfg, base, refs, seeds, oracle, nvim_name, jobs=6):
         labels.append(label)
         d = os.path.join(out_dir, label)
         os.makedirs(f'{d}/sub')
-        jobs_list.append((tree, lv, 'all', 0, f'{d}/all.txt', None))
+        jobs_list.append((tree, lv, 'all', 0, f'{d}/all.txt', lv_env))
         jobs_list.append((tree, f'{live}/live.lua', 'file', 0, f'{d}/live.txt', live_env))
-        jobs_list += [(tree, lv, 'subset', s, f'{d}/sub/{s}.txt', None) for s in range(1, seeds + 1)]
+        jobs_list += [(tree, lv, 'subset', s, f'{d}/sub/{s}.txt', lv_env) for s in range(1, seeds + 1)]
     with ThreadPoolExecutor(jobs) as ex:
-        list(ex.map(lambda j: run_zpack(cfg, nvim, *j), jobs_list))
+        list(ex.map(lambda j: run_zpack(nvim, *j), jobs_list))
 
     path = lambda label, name: os.path.join(out_dir, label, name)
-    subs = [f'sub/{s}.txt' for s in range(1, seeds + 1)]
+    names = ['all.txt', 'live.txt'] + [f'sub/{s}.txt' for s in range(1, seeds + 1)]
     b = labels[0]
     print(f"LazyVim {open(os.path.join(os.path.dirname(lv), 'SHA')).read().strip()[:12]}, {seeds} subsets, "
           f"live config {cfg['user_config']}, nvim {nvim_name}")
+    ok_all = True
     for label in labels:
-        print(f"  {label}: all P={len(lazy_map(path(label, 'all.txt')))} "
-              f"lazy={sum(v == 'lazy=true' for v in lazy_map(path(label, 'all.txt')).values())} | "
-              f"live P={len(lazy_map(path(label, 'live.txt')))} "
-              f"lazy={sum(v == 'lazy=true' for v in lazy_map(path(label, 'live.txt')).values())}")
-    clean = True
+        ma, ml = lazy_map(path(label, 'all.txt')), lazy_map(path(label, 'live.txt'))
+        print(f"  {label}: all P={len(ma)} lazy={sum(v == 'lazy=true' for v in ma.values())} | live P={len(ml)} "
+              f"lazy={sum(v == 'lazy=true' for v in ml.values())} | errors (all/live/subsets): "
+              f"{len(errors(path(label, 'all.txt')))}/{len(errors(path(label, 'live.txt')))}/"
+              f"{sum(len(errors(path(label, n))) for n in names[2:])}")
+        bad = [(n, f) for n in names for f in failures(path(label, n))]
+        for n, f in bad[:10]:
+            print(f'    !! {n}: {f[:300]}')
+        ok_all = ok_all and not bad
     for r in labels[1:]:
         print(f'\n## {b} vs {r}')
-        fl = {n: flips(path(b, n), path(r, n)) for n in ['all.txt', 'live.txt'] + subs}
+        fl = {n: flips(path(b, n), path(r, n)) for n in names}
         nflips = sum(len(v) for v in fl.values())
         print(f'  lazy= flips: {nflips}' + ('  !!' if nflips else ''))
         for n, v in fl.items():
             for x in v:
                 print(f'    {n}: {x}')
-        opts_total = 0
+        st = {n: structural(path(b, n), path(r, n)) for n in names}
+        new_err = {n: sorted(set(errors(path(r, n))) - set(errors(path(b, n)))) for n in names}
+        op = {n: opts(path(b, n), path(r, n)) for n in names}
+        oth = {n: other(path(b, n), path(r, n)) for n in names}
         for n in ('all.txt', 'live.txt'):
-            st, er = changed(path(b, n), path(r, n)), new_errors(path(b, n), path(r, n))
-            op, order = opts_split(path(b, n), path(r, n))
-            opts_total += len(op)
-            print(f'  {n[:-4]}: structural={len(st)} opts={len(op) // 2} plugins ({len(order)} order-only) '
-                  f'new errors={len(er)}')
-            for x in st[:40] + er[:10] + [f'opts: {o}' for o in sorted({x.split()[2] for x in op})]:
-                print(f'    {x}')
-            clean = clean and not st and not er
-        cnt = collections.Counter(x for s in subs for x in changed(path(b, s), path(r, s)) if x[2] in 'PEW')
-        sub_err = sum(len(new_errors(path(b, s), path(r, s))) for s in subs)
-        sub_opts = [opts_split(path(b, s), path(r, s)) for s in subs]
-        n_opts = sum(len(o) for o, _ in sub_opts) // 2
-        n_order = sum(len(x) for _, x in sub_opts)
-        print(f'  subsets: distinct differing P/E/W lines={len(cnt)} opts={n_opts} plugin-subsets ({n_order} order-only) '
-              f'new errors={sub_err}')
+            print(f'  {n[:-4]}: structural={len(st[n])} opts changed={len(op[n][0])} order-only={len(op[n][1])} '
+                  f'new errors={len(new_err[n])} other lines={len(oth[n])}')
+            for x in st[n][:40] + new_err[n][:10] + [f'opts: {o}' for o in op[n][0]] + oth[n][:10]:
+                print(f'    {x[:300]}')
+        subs = names[2:]
+        cnt = collections.Counter(x for n in subs for x in st[n])
+        sub_opts = collections.Counter(o for n in subs for o in op[n][0])
+        print(f'  subsets: distinct structural lines={len(cnt)} opts changed={sum(sub_opts.values())} '
+              f'order-only={sum(len(op[n][1]) for n in subs)} new errors={sum(len(new_err[n]) for n in subs)} '
+              f'other lines={sum(len(oth[n]) for n in subs)}')
         for x, c in sorted(cnt.items()):
-            print(f'    {c:3d} {x}')
-        clean = clean and not nflips and not cnt and not sub_err
-        print(f'  VERDICT {r}: {nflips} lazy= flips, '
-              + ('no structural changes or new errors' if clean else 'structural changes or new errors above')
-              + (f'; opts changed ({opts_total // 2 + n_opts}), see above' if opts_total or n_opts else ''))
+            print(f'    {c:3d} {x[:300]}')
+        for o, c in sorted(sub_opts.items()):
+            print(f'    {c:3d} opts: {o}')
+        clean = (ok_all and not nflips and not any(st.values()) and not any(new_err.values())
+                 and not any(o[0] for o in op.values()))
+        ok_all = ok_all and clean
+        print(f'  VERDICT {r}: ' + ('clean' if clean else 'DIFFERS') + f' ({nflips} lazy= flips, '
+              f'{sum(len(v) for v in st.values())} structural, {sum(len(o[0]) for o in op.values())} opts, '
+              f'{sum(len(v) for v in new_err.values())} new errors; order-only opts '
+              f'{sum(len(o[1]) for o in op.values())} not counted)')
     if oracle:
-        last = labels[-1]
-        print(f'\n## lazy.nvim oracle vs {last} (subsets; < lazy.nvim only, > zpack only)')
-        with ThreadPoolExecutor(jobs) as ex:
-            list(ex.map(lambda s: run_lazy(cfg, nvim, lv, s, path(last, f'sub/{s}.lazy')), range(1, seeds + 1)))
-        cnt = collections.Counter()
-        for s in range(1, seeds + 1):
-            lz = {x.strip() for x in open(path(last, f'sub/{s}.lazy')) if x.strip()}
-            zp = norm(path(last, f'sub/{s}.txt'))
-            cnt.update([f'< {x}' for x in lz - zp] + [f'> {x}' for x in zp - lz])
-        expr = sum(c for x, c in cnt.items() if '<expr>' in x)
-        for x, c in sorted(cnt.items()):
-            if '<expr>' not in x:
-                print(f'    {c:3d} {x}')
-        print(f'    <expr> lines (parser placeholder, ignore): {expr}')
+        oracle_report(cfg, nvim, lv, lv_env, labels[-1], path, seeds, jobs)
     print(f'\noutputs: {out_dir}')
-    return clean
+    return ok_all
+
+
+def norm(path):
+    """run_zpack output in run_lazy's shape: `P name lazy=x` and name -> name edges."""
+    names, edges, out = {}, [], set()
+    for line in read(path):
+        parts = line.split()
+        if line.startswith('P '):
+            names[parts[2][4:]] = parts[1]
+            out.add(f'P {parts[1]} {parts[-1]}')
+        elif line.startswith('E '):
+            edges.append((parts[1], parts[3]))
+    for a, b in edges:
+        if a in names and b in names:
+            out.add(f'E {names[a]} -> {names[b]}')
+    return out
+
+
+def oracle_report(cfg, nvim, lv, env, last, path, seeds, jobs):
+    """lazy.nvim's resolver on the same inputs; informational, it doesn't change the verdict."""
+    print(f'\n## lazy.nvim oracle vs {last} (all + subsets; < lazy.nvim only, > zpack only)')
+    runs = [('all', 0, 'all.lazy', 'all.txt')] + [('subset', s, f'sub/{s}.lazy', f'sub/{s}.txt')
+                                                 for s in range(1, seeds + 1)]
+    with ThreadPoolExecutor(jobs) as ex:
+        list(ex.map(lambda r: run_lazy(cfg, nvim, lv, r[0], r[1], path(last, r[2]), env), runs))
+    fl, rest, bad = collections.Counter(), collections.Counter(), []
+    for _, _, lz_name, zp_name in runs:
+        lz = {x for x in read(path(last, lz_name)) if x}
+        bad += [f'{lz_name}: {x}' for x in lz if x.startswith('ERROR')]
+        zp = norm(path(last, zp_name))
+        lzm = {x.split()[1]: x.split()[2] for x in lz if x.startswith('P ')}
+        zpm = {x.split()[1]: x.split()[2] for x in zp if x.startswith('P ')}
+        fl.update(f'{n}: lazy.nvim {lzm[n]}, zpack {zpm[n]}' for n in lzm.keys() & zpm.keys() if lzm[n] != zpm[n])
+        lz_names = {' '.join(x.split()[:2]) if x.startswith('P ') else x for x in lz if not x.startswith('ERROR')}
+        zp_names = {' '.join(x.split()[:2]) if x.startswith('P ') else x for x in zp}
+        rest.update([f'< {x}' for x in lz_names - zp_names] + [f'> {x}' for x in zp_names - lz_names])
+    for x in bad[:5]:
+        print(f'    !! {x[:300]}')
+    print(f'  lazy= disagreements: {sum(fl.values())}')
+    for x, c in sorted(fl.items()):
+        print(f'    {c:3d} {x}')
+    expr = sum(c for x, c in rest.items() if '<expr>' in x)
+    print('  plugin set / edges:')
+    for x, c in sorted(rest.items()):
+        if '<expr>' not in x:
+            print(f'    {c:3d} {x}')
+    print(f'    <expr> lines (parser placeholder, ignore): {expr}')

@@ -1,0 +1,32 @@
+realistic150 [0.12] 100 rounds, load 2.1-2.2
+  0a9e71f          cpu med   45.57  wall med   49.70  setups=40 colors=
+  0a9e71f_aa       cpu med   45.57  wall med   49.66  setups=40 colors=
+  241c9ba          cpu med   45.54  wall med   49.76  setups=40 colors=
+  lazy             cpu med   47.16  wall med   50.09  setups=40 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.18 [-0.21, +0.49]
+  d-cpu 0a9e71f - 241c9ba            -0.12 [-0.40, +0.24]
+  d-cpu 0a9e71f - lazy               -1.45 [-1.92, -1.09]
+inits150 [0.12] 100 rounds, load 2.1-2.0
+  0a9e71f          cpu med   60.13  wall med   64.27  setups=90 colors=
+  0a9e71f_aa       cpu med   59.80  wall med   63.97  setups=90 colors=
+  241c9ba          cpu med   58.96  wall med   63.27  setups=90 colors=
+  lazy             cpu med   62.77  wall med   65.72  setups=90 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.33 [-0.87, +0.47]
+  d-cpu 0a9e71f - 241c9ba            +1.10 [+0.80, +1.54]
+  d-cpu 0a9e71f - lazy               -2.95 [-3.46, -2.56]
+trig150 [0.12] 100 rounds, load 2.0-1.9
+  0a9e71f          cpu med   61.34  wall med   65.72  setups=49 colors=
+  0a9e71f_aa       cpu med   61.17  wall med   65.75  setups=49 colors=
+  241c9ba          cpu med   58.10  wall med   62.68  setups=49 colors=
+  lazy             cpu med   61.23  wall med   64.17  setups=49 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.25 [-0.70, +0.24]
+  d-cpu 0a9e71f - 241c9ba            +3.09 [+2.76, +3.47]
+  d-cpu 0a9e71f - lazy               -0.15 [-0.57, +0.44]
+
+d-cpu 0a9e71f minus X, ms [95% CI]
+| row | nvim | load | 0a9e71f_aa | 241c9ba | lazy | cpu |
+|---|---|---|---|---|---|---|
+| realistic150 | 0.12 | 2.1-2.2 | +0.18 [-0.21, +0.49] | -0.12 [-0.40, +0.24] | -1.45 [-1.92, -1.09] | 45.57 |
+| inits150 | 0.12 | 2.1-2.0 | -0.33 [-0.87, +0.47] | +1.10 [+0.80, +1.54] | -2.95 [-3.46, -2.56] | 60.13 |
+| trig150 | 0.12 | 2.0-1.9 | -0.25 [-0.70, +0.24] | +3.09 [+2.76, +3.47] | -0.15 [-0.57, +0.44] | 61.34 |
+raw samples: /Users/zuqini/Projects/zpack-bench/work.noindex/out/perf-20261106-005722.json

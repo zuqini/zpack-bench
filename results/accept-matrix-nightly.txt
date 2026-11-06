@@ -1,0 +1,167 @@
+realistic150 [nightly] 100 rounds, load 1.2-1.6
+  0a9e71f          cpu med   55.87  wall med   61.05  setups=40 colors=
+  0a9e71f_aa       cpu med   55.95  wall med   60.74  setups=40 colors=
+  241c9ba          cpu med   55.59  wall med   60.31  setups=40 colors=
+  lazy             cpu med   59.36  wall med   63.09  setups=40 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.05 [-0.32, +0.52]
+  d-cpu 0a9e71f - 241c9ba            -0.12 [-0.62, +0.24]
+  d-cpu 0a9e71f - lazy               -3.07 [-3.48, -2.55]
+file150 [nightly] 100 rounds, load 1.7-1.8
+  0a9e71f          cpu med   73.22  wall med   79.00  setups=55 colors=
+  0a9e71f_aa       cpu med   72.64  wall med   78.36  setups=55 colors=
+  241c9ba          cpu med   72.94  wall med   79.02  setups=55 colors=
+  lazy             cpu med   77.54  wall med   81.71  setups=55 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.39 [-0.13, +1.14]
+  d-cpu 0a9e71f - 241c9ba            +0.25 [-0.39, +0.69]
+  d-cpu 0a9e71f - lazy               -4.03 [-4.80, -3.50]
+eager150 [nightly] 100 rounds, load 1.9-1.7
+  0a9e71f          cpu med   88.57  wall med   95.14  setups=130 colors=
+  0a9e71f_aa       cpu med   88.65  wall med   95.24  setups=130 colors=
+  241c9ba          cpu med   88.51  wall med   95.05  setups=130 colors=
+  lazy             cpu med  149.10  wall med  153.89  setups=130 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.06 [-0.34, +0.28]
+  d-cpu 0a9e71f - 241c9ba            +0.39 [-0.09, +0.90]
+  d-cpu 0a9e71f - lazy              -60.38 [-61.19, -60.08]
+cs150 [nightly] 100 rounds, load 1.7-1.7
+  0a9e71f          cpu med   88.77  wall med   95.33  setups=129 colors=bench000
+  0a9e71f_aa       cpu med   88.89  wall med   95.42  setups=129 colors=bench000
+  241c9ba          cpu med   88.32  wall med   94.89  setups=129 colors=bench000
+  lazy             cpu med  148.42  wall med  153.31  setups=129 colors=bench000
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.07 [-0.62, +0.27]
+  d-cpu 0a9e71f - 241c9ba            +0.53 [+0.29, +0.83]
+  d-cpu 0a9e71f - lazy              -59.62 [-60.77, -58.93]
+inits150 [nightly] 100 rounds, load 1.7-1.7
+  0a9e71f          cpu med   64.72  wall med   69.18  setups=90 colors=
+  0a9e71f_aa       cpu med   64.94  wall med   69.43  setups=90 colors=
+  241c9ba          cpu med   63.62  wall med   68.25  setups=90 colors=
+  lazy             cpu med   69.25  wall med   72.46  setups=90 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.52 [-0.92, -0.13]
+  d-cpu 0a9e71f - 241c9ba            +0.89 [+0.56, +1.29]
+  d-cpu 0a9e71f - lazy               -4.59 [-5.00, -4.25]
+trig150 [nightly] 100 rounds, load 1.7-1.8
+  0a9e71f          cpu med   66.35  wall med   71.32  setups=49 colors=
+  0a9e71f_aa       cpu med   66.03  wall med   70.84  setups=49 colors=
+  241c9ba          cpu med   63.75  wall med   68.71  setups=49 colors=
+  lazy             cpu med   67.97  wall med   71.39  setups=49 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.40 [-0.20, +0.74]
+  d-cpu 0a9e71f - 241c9ba            +2.73 [+2.19, +3.14]
+  d-cpu 0a9e71f - lazy               -1.33 [-1.82, -0.80]
+trig10_150 [nightly] 100 rounds, load 1.8-1.7
+  0a9e71f          cpu med   57.20  wall med   61.80  setups=44 colors=
+  0a9e71f_aa       cpu med   57.44  wall med   62.02  setups=44 colors=
+  241c9ba          cpu med   55.80  wall med   60.49  setups=44 colors=
+  lazy             cpu med   59.28  wall med   62.54  setups=44 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.09 [-0.46, +0.26]
+  d-cpu 0a9e71f - 241c9ba            +1.28 [+1.02, +1.62]
+  d-cpu 0a9e71f - lazy               -1.93 [-2.53, -1.47]
+ftd150 [nightly] 100 rounds, load 1.7-1.8
+  0a9e71f          cpu med   54.45  wall med   58.73  setups=37 colors=
+  0a9e71f_aa       cpu med   54.52  wall med   58.82  setups=37 colors=
+  241c9ba          cpu med   53.94  wall med   58.39  setups=37 colors=
+  lazy             cpu med   56.07  wall med   59.23  setups=37 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.10 [-0.26, +0.15]
+  d-cpu 0a9e71f - 241c9ba            +0.35 [+0.11, +0.69]
+  d-cpu 0a9e71f - lazy               -1.69 [-1.95, -1.22]
+fton150 [nightly] 100 rounds, load 1.8-1.8
+  0a9e71f          cpu med   54.31  wall med   58.76  setups=37 colors=
+  0a9e71f_aa       cpu med   54.30  wall med   58.66  setups=37 colors=
+  241c9ba          cpu med   53.55  wall med   58.00  setups=37 colors=
+  lazy             cpu med   56.20  wall med   59.45  setups=37 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.00 [-0.41, +0.28]
+  d-cpu 0a9e71f - 241c9ba            +0.64 [+0.25, +1.08]
+  d-cpu 0a9e71f - lazy               -1.55 [-2.01, -1.19]
+realistic300 [nightly] 100 rounds, load 1.9-2.0
+  0a9e71f          cpu med   85.90  wall med   91.77  setups=80 colors=
+  0a9e71f_aa       cpu med   85.64  wall med   91.43  setups=80 colors=
+  241c9ba          cpu med   85.78  wall med   91.86  setups=80 colors=
+  lazy             cpu med  106.01  wall med  110.02  setups=80 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.25 [-0.16, +0.71]
+  d-cpu 0a9e71f - 241c9ba            +0.22 [-0.22, +0.76]
+  d-cpu 0a9e71f - lazy              -20.29 [-20.79, -19.71]
+file300 [nightly] 100 rounds, load 2.0-1.9
+  0a9e71f          cpu med  129.56  wall med  137.34  setups=112 colors=
+  0a9e71f_aa       cpu med  129.31  wall med  136.88  setups=112 colors=
+  241c9ba          cpu med  129.93  wall med  138.35  setups=112 colors=
+  lazy             cpu med  164.99  wall med  170.60  setups=112 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.43 [-0.31, +1.10]
+  d-cpu 0a9e71f - 241c9ba            -0.29 [-0.76, +0.32]
+  d-cpu 0a9e71f - lazy              -35.13 [-36.34, -34.38]
+eager300 [nightly] 100 rounds, load 2.2-2.1
+  0a9e71f          cpu med  166.79  wall med  176.72  setups=260 colors=
+  0a9e71f_aa       cpu med  166.22  wall med  175.78  setups=260 colors=
+  241c9ba          cpu med  165.98  wall med  175.84  setups=260 colors=
+  lazy             cpu med  433.80  wall med  441.36  setups=260 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.21 [-0.68, +1.11]
+  d-cpu 0a9e71f - 241c9ba            +0.48 [-0.79, +1.98]
+  d-cpu 0a9e71f - lazy             -266.59 [-268.61, -264.42]
+cs300 [nightly] 100 rounds, load 2.4-2.4
+  0a9e71f          cpu med  165.58  wall med  175.44  setups=259 colors=bench000
+  0a9e71f_aa       cpu med  165.76  wall med  175.82  setups=259 colors=bench000
+  241c9ba          cpu med  164.27  wall med  174.11  setups=259 colors=bench000
+  lazy             cpu med  425.19  wall med  432.23  setups=259 colors=bench000
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.02 [-0.87, +0.89]
+  d-cpu 0a9e71f - 241c9ba            +1.49 [+0.99, +1.98]
+  d-cpu 0a9e71f - lazy             -258.33 [-261.08, -256.60]
+inits300 [nightly] 100 rounds, load 2.4-2.2
+  0a9e71f          cpu med  124.21  wall med  130.10  setups=180 colors=
+  0a9e71f_aa       cpu med  124.20  wall med  130.13  setups=180 colors=
+  241c9ba          cpu med  120.71  wall med  126.90  setups=180 colors=
+  lazy             cpu med  148.37  wall med  152.57  setups=180 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.07 [-0.67, +0.53]
+  d-cpu 0a9e71f - 241c9ba            +3.61 [+3.09, +4.22]
+  d-cpu 0a9e71f - lazy              -24.29 [-25.09, -23.60]
+trig300 [nightly] 100 rounds, load 2.4-2.1
+  0a9e71f          cpu med  120.01  wall med  126.35  setups=97 colors=
+  0a9e71f_aa       cpu med  120.20  wall med  126.47  setups=97 colors=
+  241c9ba          cpu med  113.71  wall med  120.29  setups=97 colors=
+  lazy             cpu med  144.40  wall med  149.18  setups=97 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.46 [-1.16, +0.13]
+  d-cpu 0a9e71f - 241c9ba            +5.99 [+5.15, +6.75]
+  d-cpu 0a9e71f - lazy              -23.82 [-24.80, -23.12]
+trig10_300 [nightly] 100 rounds, load 2.3-2.3
+  0a9e71f          cpu med   95.79  wall med  101.71  setups=84 colors=
+  0a9e71f_aa       cpu med   95.63  wall med  101.53  setups=84 colors=
+  241c9ba          cpu med   94.95  wall med  101.52  setups=84 colors=
+  lazy             cpu med  117.80  wall med  122.48  setups=84 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         +0.43 [-0.03, +0.70]
+  d-cpu 0a9e71f - 241c9ba            +1.14 [+0.74, +1.67]
+  d-cpu 0a9e71f - lazy              -21.31 [-22.35, -20.61]
+ftd300 [nightly] 100 rounds, load 2.7-2.5
+  0a9e71f          cpu med   92.77  wall med   98.56  setups=80 colors=
+  0a9e71f_aa       cpu med   93.12  wall med   98.98  setups=80 colors=
+  241c9ba          cpu med   92.63  wall med   98.65  setups=80 colors=
+  lazy             cpu med  112.69  wall med  116.79  setups=80 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.74 [-1.00, -0.26]
+  d-cpu 0a9e71f - 241c9ba            -0.01 [-0.52, +0.44]
+  d-cpu 0a9e71f - lazy              -19.95 [-20.71, -19.58]
+fton300 [nightly] 100 rounds, load 2.4-2.1
+  0a9e71f          cpu med   94.37  wall med  100.19  setups=80 colors=
+  0a9e71f_aa       cpu med   94.26  wall med  100.07  setups=80 colors=
+  241c9ba          cpu med   90.46  wall med   96.64  setups=80 colors=
+  lazy             cpu med  112.81  wall med  116.99  setups=80 colors=
+  d-cpu 0a9e71f - 0a9e71f_aa         -0.23 [-0.59, +0.39]
+  d-cpu 0a9e71f - 241c9ba            +3.70 [+3.19, +4.21]
+  d-cpu 0a9e71f - lazy              -18.57 [-19.13, -17.63]
+
+d-cpu 0a9e71f minus X, ms [95% CI]
+| row | nvim | load | 0a9e71f_aa | 241c9ba | lazy | cpu |
+|---|---|---|---|---|---|---|
+| realistic150 | nightly | 1.2-1.6 | -0.05 [-0.32, +0.52] | -0.12 [-0.62, +0.24] | -3.07 [-3.48, -2.55] | 55.87 |
+| file150 | nightly | 1.7-1.8 | +0.39 [-0.13, +1.14] | +0.25 [-0.39, +0.69] | -4.03 [-4.80, -3.50] | 73.22 |
+| eager150 | nightly | 1.9-1.7 | -0.06 [-0.34, +0.28] | +0.39 [-0.09, +0.90] | -60.38 [-61.19, -60.08] | 88.57 |
+| cs150 | nightly | 1.7-1.7 | -0.07 [-0.62, +0.27] | +0.53 [+0.29, +0.83] | -59.62 [-60.77, -58.93] | 88.77 |
+| inits150 | nightly | 1.7-1.7 | -0.52 [-0.92, -0.13] | +0.89 [+0.56, +1.29] | -4.59 [-5.00, -4.25] | 64.72 |
+| trig150 | nightly | 1.7-1.8 | +0.40 [-0.20, +0.74] | +2.73 [+2.19, +3.14] | -1.33 [-1.82, -0.80] | 66.35 |
+| trig10_150 | nightly | 1.8-1.7 | -0.09 [-0.46, +0.26] | +1.28 [+1.02, +1.62] | -1.93 [-2.53, -1.47] | 57.20 |
+| ftd150 | nightly | 1.7-1.8 | -0.10 [-0.26, +0.15] | +0.35 [+0.11, +0.69] | -1.69 [-1.95, -1.22] | 54.45 |
+| fton150 | nightly | 1.8-1.8 | -0.00 [-0.41, +0.28] | +0.64 [+0.25, +1.08] | -1.55 [-2.01, -1.19] | 54.31 |
+| realistic300 | nightly | 1.9-2.0 | +0.25 [-0.16, +0.71] | +0.22 [-0.22, +0.76] | -20.29 [-20.79, -19.71] | 85.90 |
+| file300 | nightly | 2.0-1.9 | +0.43 [-0.31, +1.10] | -0.29 [-0.76, +0.32] | -35.13 [-36.34, -34.38] | 129.56 |
+| eager300 | nightly | 2.2-2.1 | +0.21 [-0.68, +1.11] | +0.48 [-0.79, +1.98] | -266.59 [-268.61, -264.42] | 166.79 |
+| cs300 | nightly | 2.4-2.4 | +0.02 [-0.87, +0.89] | +1.49 [+0.99, +1.98] | -258.33 [-261.08, -256.60] | 165.58 |
+| inits300 | nightly | 2.4-2.2 | -0.07 [-0.67, +0.53] | +3.61 [+3.09, +4.22] | -24.29 [-25.09, -23.60] | 124.21 |
+| trig300 | nightly | 2.4-2.1 | -0.46 [-1.16, +0.13] | +5.99 [+5.15, +6.75] | -23.82 [-24.80, -23.12] | 120.01 |
+| trig10_300 | nightly | 2.3-2.3 | +0.43 [-0.03, +0.70] | +1.14 [+0.74, +1.67] | -21.31 [-22.35, -20.61] | 95.79 |
+| ftd300 | nightly | 2.7-2.5 | -0.74 [-1.00, -0.26] | -0.01 [-0.52, +0.44] | -19.95 [-20.71, -19.58] | 92.77 |
+| fton300 | nightly | 2.4-2.1 | -0.23 [-0.59, +0.39] | +3.70 [+3.19, +4.21] | -18.57 [-19.13, -17.63] | 94.37 |
+raw samples: /Users/zuqini/Projects/zpack-bench/work.noindex/out/perf-20261106-004138.json

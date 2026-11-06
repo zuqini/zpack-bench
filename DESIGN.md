@@ -179,3 +179,16 @@ PR #54's `all.sh` ran 9 scenarios per size: cs, realistic, file, eager, inits, t
   - `ftd` matches every number recorded from r24 (see above).
   - `cs` matches the recorded bench000 spec line.
   - Git commit dates are now fixed, so lockfile revs are reproducible.
+- `perf` runs one extra startup per target and row and prints `setups=N colors=X`, the count of `vim.g.benchNNN_setup` variables. Without it, a scenario that stops loading plugins (a broken `@plugin` mode, say) would look like a speed-up. Seen counts at 150: realistic and both `@` modes 40, cs 129 plus `colors=bench000` on every manager, miss 17. In miss, `config` replaces `setup`, so most eager plugins don't count.
+- CPU time is the `RUSAGE_CHILDREN` delta around each child. That lets `communicate()` enforce a timeout and kill only that PID, where `os.wait4` would block.
+- `diff`:
+  - It reports new errors against the base, not all errors. LazyVim's `mini-hipatterns` extra always fails to parse (`<expr>` placeholder) on every ref.
+  - It separates opts changes that are only list reordering (same tokens). PR #54's merge-order change reorders mason's `ensure_installed` in 23 places and changes nothing else.
+  - A repeated ref uses the A/A tree, so `zb diff X X` is a valid self-check. selftest relies on it.
+- `probe`:
+  - It checks every section for variation between reps of the same tree before comparing trees, because dependency load order in older zpack is non-deterministic (`pairs(deps)`).
+  - It keeps rtp in order rather than sorting it as real2 did.
+  - New `zpack.*` modules go in their own section and don't fail the verdict.
+- Tree labels are the ref when it is a short name or sha, else the sha. `origin/HEAD` used to create nested directories.
+- extra/bughunt runs against bfd84e3, but `probe_harness`'s stale check calls the removed `merge.sort_specs` and prints `CHECK ERR`. Kept as-is per the copy-unchanged decision.
+- Dropped: a LOG.md in the workspace task folder. The coordinator mirrors this file instead.

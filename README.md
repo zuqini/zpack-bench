@@ -13,16 +13,21 @@ It needs Python 3.9+ (stdlib only), nvim nightly and/or 0.12, a zpack.nvim clone
 ./zb check <base-ref> <ref>
 ```
 
-It runs `diff`, then `probe` (3 reps), then `perf` on `realistic150,file150,inits150,trig150` with 60 rounds. It exits 1 if the functional or real-config checks find differences. Read each layer's VERDICT line first. Before the first `diff` or `check`, run `./zb fetch-lazyvim` once (see Setup).
+It runs `diff` and `probe` (3 reps) on nvim nightly and on 0.12, then `perf` on `realistic150,file150,inits150,trig150` with 60 rounds on both. Read each layer's VERDICT line first, then the final `CHECK:` line. It exits 1 if any of these hold:
+- `diff` finds flips, structural or opts changes, new errors, or an output it couldn't compare.
+- `probe` finds a state difference, a missing dump, or stderr the base doesn't have.
+- `perf` flags a row: ERRORS, SANITY, LOAD, or not faster than lazy.nvim.
+
+It takes roughly 10-15 minutes on an otherwise idle machine. Before the first `diff` or `check`, run `./zb fetch-lazyvim` once (see Setup).
 
 ## Layers
 
 ```sh
 ./zb diff 241c9ba bfd84e3 --seeds 40 --oracle      # functional differential
-./zb probe 241c9ba bfd84e3 --reps 5 --rounds 30    # real-config probe (+ paired cpu)
+./zb probe 241c9ba bfd84e3 --reps 5                # real-config probe
 ./zb perf bfd84e3 --base 241c9ba --rows matrix --rounds 100 --nvim nightly,0.12
 ./zb perf bfd84e3 --rows realistic150@vimenter,realistic150@plugin
-./zb sprof bfd84e3 inits300 --runs 30              # jit.profile, ms per startup
+./zb sprof bfd84e3 inits300 --runs 30              # jit.profile of that row's startup, ms per startup
 ./zb inproc 241c9ba bfd84e3 --input all            # in-process import + resolve_all
 ./zb selftest                                       # determinism + every scenario starts + A/A diff
 ```
@@ -38,7 +43,14 @@ It reports, in order:
 3. Opts changes, with order-only list changes counted separately.
 4. Errors that are new against the base.
 
-`--oracle` also compares the last ref with lazy.nvim's own resolver on the subsets. Ignore `<expr>` lines: LazyVim is parsed with Tree-sitter, never executed, and any expression that isn't a literal becomes `"<expr>"`.
+What fails the verdict:
+- Any output that errored or has no plugins, even when the base failed the same way.
+- Flips, including a plugin present on one side only.
+- Structural changes, opts changes that are more than list order, and new errors.
+
+`--oracle` also runs lazy.nvim's own resolver on all extras and the subsets. It lists `lazy=` disagreements first (using lazy.nvim's rule for a plugin without `lazy`), then plugin-set and edge differences. It is informational and doesn't change the verdict. Known disagreements on LazyVim 301a3f7: plugins on LazyVim's own `LazyFile` user event, which lazy.nvim counts as lazy and zpack resolves as eager, and three dap plugins in subsets that lack their optional parent.
+
+Ignore `<expr>` lines: LazyVim is parsed with Tree-sitter, never executed, and any expression that isn't a literal becomes `"<expr>"`. `fetch-lazyvim` needs an authenticated `gh`.
 
 ### `probe`
 Starts your real config (`user_config`) with a clone of `user_data` and XDG isolated. Each ref's tree goes first on `runtimepath`. It dumps the following, with and without a file argument:
@@ -48,7 +60,16 @@ Starts your real config (`user_config`) with a clone of `user_data` and XDG isol
 - the buffer's filetype and `colors_name`
 - messages
 
-For each section it reports whether trees differ and whether it varies between reps of the same tree. New `zpack.*` modules are listed separately and don't fail the verdict.
+For each section it reports whether trees differ. "varies between reps" means the section isn't stable even within one tree; dependency load order is one source. A difference in such a section may be noise, so compare the rep files in `work.noindex/probe/out/`.
+
+What fails the verdict:
+- A section that differs from the base.
+- A missing dump.
+- stderr that the base doesn't have.
+
+New `zpack.*` modules are listed separately and don't fail the verdict.
+
+Every plugin the config adds must already be installed in `user_data`. Otherwise vim.pack clones it from the network inside the sandbox, and the probe measures that instead.
 
 ### `perf`
 Each target starts in its own process, in shuffled order each round, after 5 warmups. Cells are the d-cpu median of `ref − X` with a 95% bootstrap CI.
@@ -59,7 +80,17 @@ Targets:
 - lazy.nvim
 - with `--targets`, optionally `bare` (no plugins) and `native` (plain `vim.pack.add`, no setups)
 
-Each target's line also shows `setups=N colors=X` from one extra startup, so a scenario that silently stopped loading plugins shows up. Raw samples go to `work.noindex/out/perf-*.json`.
+Each target's line also shows `setups=N colors=X` from one extra startup.
+
+A row is flagged when:
+- **ERRORS:** any startup wrote to stderr or exited non-zero.
+- **SANITY:** a zpack or lazy.nvim target's setups or colors differ from the first ref's. That catches a scenario that silently stopped loading plugins.
+- **LOAD>4:** the machine was busy. Rerun the row.
+- **NOT-FASTER-THAN-LAZY:** the CI of `ref − lazy` reaches 0 or above.
+
+The run ends with a `VERDICT:` line and exits 1 if any row is flagged. Rows where the ref is slower than `--base` by more than the A/A's upper bound + 1 ms are listed, but don't fail. Raw samples go to `work.noindex/out/perf-*.json`.
+
+Rough time: `--rows matrix --rounds 100` took 16 minutes on nightly, about 50 s per row with 4 targets.
 
 Rows are `<scenario><n>[@vimenter|@plugin]`. A scenario whose name ends in a digit takes an underscore (`trig10_150`). `--rows` also accepts:
 - `default`: the 4 rows `check` uses.
@@ -84,14 +115,15 @@ The exact rules are in DESIGN.md.
 ## Reading perf numbers
 - Compare paired d-cpu only. Absolute times move about 2x with machine load.
 - Trust a delta only when it is clearly outside the A/A row's CI.
-- `perf` waits for the 1-minute load to fall to `max_load` (4) before each row and flags rows that end above it. `--strict` fails the run instead.
+- `perf` waits for the 1-minute load to fall to `max_load` (4) before each row and flags rows that end above it.
 - Microsecond deltas are noise. ms-scale costs, growth from 150 to 300 plugins, and lazy↔eager flips are what matter.
 
 ## Setup
 - `config.json` holds the paths (nvim binaries, lazy.nvim, the zpack repo, the live config and its data dir). Override them in `local.json` (gitignored) or with `ZB_LAZY`, `ZB_ZPACK_REPO`, `ZB_USER_CONFIG`, `ZB_USER_DATA` or `ZB_WORK`.
-- `./zb fetch-lazyvim [sha]` downloads LazyVim's source as data, through `gh`.
+- `./zb fetch-lazyvim [sha]` downloads LazyVim's source as data, through an authenticated `gh`. The acceptance runs used 301a3f71007c.
+- `selftest` defaults to `--ref origin/HEAD`, which must be set in the zpack clone (`git remote set-head origin -a`).
 - zpack trees come from `git archive <sha>` into `work.noindex/trees/`. Your zpack checkout is never touched.
-- Generated plugin sets go in `work.noindex/sets/`. They are deterministic from (n, seed), git commit dates included.
+- Generated plugin sets go in `work.noindex/sets/n<n>-s<seed>-g<hash of gen.py>/`. They are deterministic from (n, seed), git commit dates included, so editing the generator makes a new set rather than reusing a stale one.
 
 ## Rules baked in
 - Anything that runs zpack's import uses isolated XDG dirs, because the import may call the real `vim.pack.add`. In-process scripts stub it.
@@ -109,6 +141,6 @@ GEN=extra/bughunt/gen.lua SEED=<n> MODE=plain extra/bughunt/run.sh <ref> minimiz
 LAZY=~/.local/share/nvim/lazy/lazy.nvim nvim -u NONE -l extra/bughunt/lazyrun.lua extra/bughunt/scen/s1.lua
 ```
 
-`run.sh` copies the tree plus the tests, links a LuaRocks tree that has busted (`ROCKS`, default `~/projects/zpack.nvim/.luarocks`), and runs busted with XDG isolated.
+`run.sh` copies the tree plus the tests, links a LuaRocks tree that has busted (`ROCKS`, default `<zpack_repo>/.luarocks`), and runs busted with the configured nightly nvim and XDG isolated.
 
 Expect a few `DEP` seeds: cycles where plugins' specs disable each other have no order-free answer. Against current zpack (checked at bfd84e3), `probe_harness`'s stale-state check prints `CHECK ERR ... sort_specs`, because that internal was removed. The probe output is still valid.

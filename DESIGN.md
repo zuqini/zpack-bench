@@ -219,6 +219,8 @@ An independent review found 8 major and 14 minor issues. Their common theme was 
 
 **What the fixes showed**
 - **The "23" holds:** re-derived with the opts key fixed, the order-only count for 241c9ba → bfd84e3 is still 23 (1 on all extras, 22 over 40 subsets), all mason `ensure_installed`. The old figure was right by coincidence of one changed plugin per file.
-- **Oracle `lazy=` disagreements:** 210 on LazyVim 301a3f7 (all + 40 subsets), across 12 plugins. Nine use LazyVim's own `LazyFile` user event: lazy.nvim counts any `event` as lazy, while zpack resolves these as eager. The other three are dap plugins (nvim-dap-go, nvim-dap-ruby, one-small-step-for-vimkind), which differ only in subsets where their optional parent nvim-dap is absent. That is informational, not a zpack regression: both refs behave the same.
+- **Oracle `lazy=` disagreements:** 210 on LazyVim 301a3f7 (all + 40 subsets), across 12 plugins. Both refs behave the same, so this is informational, not a regression.
+  - Nine plugins use only LazyVim's own `LazyFile` user event (gitsigns, nvim-lint, nvim-ts-autotag, conjure, none-ls, indent-blankline, mini.indentscope, nvim-treesitter-context, nvim-paredit). lazy.nvim counts any `event` as lazy. zpack resolves them as eager and gives no W line. That may be a zpack parity question in its own right; not investigated here.
+  - Three are dependencies of nvim-dap (nvim-dap-go, nvim-dap-ruby, one-small-step-for-vimkind), in subsets where nvim-dap is eager under both resolvers. lazy.nvim labels a dependency `lazy=true` even though its eager parent loads it at startup, while zpack labels it `lazy=false`. That is a labelling difference, not a behaviour difference.
 - **0.12 vs lazy.nvim:** trig150 on 0.12 is level with lazy.nvim (−0.15 [−0.57, +0.44]). Every nightly row is clearly faster.
 - **The nvim.log:** an `nvim.log` appeared in the cwd once during these runs and didn't reproduce afterwards. `env_for` now creates all four XDG dirs.

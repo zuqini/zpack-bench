@@ -16,7 +16,8 @@ def inproc(cfg, refs, inp, rounds, nvim_name):
     else:
         root_arg, mode, env = diff.lazyvim_dir(cfg), inp, sandbox.env_for(diff.empty_sandbox(cfg))
     subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'inproc.lua'),
-                    os.path.join(cfg['work'], 'trees'), root_arg, mode, str(rounds), *names], check=True, env=env)
+                    os.path.join(cfg['work'], 'trees'), root_arg, mode, str(rounds), *names], check=True, env=env,
+                   cwd=sandbox.cwd(env))
 
 
 def sprof(cfg, ref, row, runs, top, nvim_name):
@@ -31,7 +32,7 @@ def sprof(cfg, ref, row, runs, top, nvim_name):
     for i in range(runs + 3):
         if i == 3 and os.path.exists(out):
             os.unlink(out)
-        subprocess.run(args, env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
+        subprocess.run(args, env=env, cwd=sandbox.cwd(env), stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
     self_l, incl, vms, jl = (collections.Counter() for _ in range(4))
     total = 0
     for row_ in open(out):

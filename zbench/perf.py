@@ -31,7 +31,7 @@ def once(args, env):
     """One startup. Returns (wall ms, cpu ms, error text or '')."""
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     t = time.perf_counter()
-    p = subprocess.Popen(args, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+    p = subprocess.Popen(args, env=env, cwd=sandbox.cwd(env), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.PIPE, text=True)
     try:
         _, err = p.communicate(timeout=TIMEOUT)
@@ -67,8 +67,8 @@ SANITY = ("lua vim.schedule(function() vim.schedule(function() io.stderr:write((
 
 def sanity(args, env):
     """How many plugins ran setup() (vim.g.benchNNN_setup), from one extra startup."""
-    p = subprocess.run(args[:-1] + [SANITY], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                       timeout=TIMEOUT)
+    p = subprocess.run(args[:-1] + [SANITY], env=env, cwd=sandbox.cwd(env), stdin=subprocess.DEVNULL,
+                       capture_output=True, text=True, timeout=TIMEOUT)
     line = [x for x in p.stderr.splitlines() if x.startswith('ZB ')]
     return line[0][3:] if line else 'no report: ' + p.stderr.strip()[:200]
 

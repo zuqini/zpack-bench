@@ -62,7 +62,8 @@ def empty_sandbox(cfg):
 def run_zpack(nvim, tree, inp, mode, seed, out, env):
     with open(out, 'w') as f:
         p = subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'run_zpack.lua'), tree, inp, mode,
-                            str(seed), '1'], stdout=f, stderr=subprocess.PIPE, text=True, env=env, timeout=300)
+                            str(seed), '1'], stdout=f, stderr=subprocess.PIPE, text=True, env=env, cwd=sandbox.cwd(env),
+                           timeout=300)
     if p.returncode:
         with open(out, 'a') as f:
             f.write(f'ERROR run_zpack exit {p.returncode}: {" ".join(p.stderr.split())[:300]}\n')
@@ -70,7 +71,8 @@ def run_zpack(nvim, tree, inp, mode, seed, out, env):
 
 def run_lazy(cfg, nvim, lv, mode, seed, out, env):
     p = subprocess.run([nvim, '-u', 'NONE', '-l', os.path.join(config.LUA, 'run_lazy.lua'), lv, mode, str(seed)],
-                       capture_output=True, text=True, env=dict(env, LAZY=cfg['lazy']), timeout=300)
+                       capture_output=True, text=True, env=dict(env, LAZY=cfg['lazy']), cwd=sandbox.cwd(env),
+                       timeout=300)
     with open(out, 'w') as f:
         f.write('\n'.join(sorted({x for x in p.stdout.splitlines() if x and not x.startswith('X')})) + '\n')
         if p.returncode or not p.stdout.strip():

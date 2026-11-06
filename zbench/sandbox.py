@@ -58,6 +58,11 @@ def env_for(root):
     return dict(os.environ, **dirs)
 
 
+def cwd(env):
+    """Run children inside their sandbox, so anything nvim drops in the cwd (an nvim.log) stays there."""
+    return os.path.dirname(env['XDG_STATE_HOME'])
+
+
 def clone(src, dest):
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     subprocess.run(['cp', '-cR', src, dest], check=True)

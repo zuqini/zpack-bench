@@ -102,16 +102,18 @@ init = function() vim.g.bench_init_NNN = 1; pcall(require, 'bench_missing_NNN_a'
 - Which eager module each ft function picks was RNG output that can't be recovered. It is now drawn with `Random('<seed>:trig')` from the eager plugins, so the cost has the same shape but the targets may differ from PR #54's.
 - Recovered from r8-perf `config/trig`.
 
-**`trig10`**: `trig` with only the first 10 converted plugins in index order. The other 18 keep their table form.
-- Recovered from r8-perf `config/trig10`.
+**`trig10`**: `trig` restricted to the first 4 keys, first 3 cmd and first 3 ft plugins of the `trig` set. That is indices 12, 14, 36, 80 / 18, 24, 30 / 32, 34, 60 at 150. The other 18 keep their table form.
+- Recovered from r8-perf `config/trig10`. Taking the first 10 by index does not reproduce it.
 
 **`ftd`**: `realistic` on its own store, `store-ftd`.
-- The first 40 plugins in index order whose kind is event, verylazy, cmd, keys or ft become `ft = { 'ftdNNN' }, opts = {}`. Any `dependencies` stay.
+- Every `ft` plugin, plus the first event, verylazy, cmd and keys plugins in index order up to 40 in total, become `ft = { 'ftdNNN' }, opts = {}`. Any `dependencies` stay. At 150 that is ft 15, event 11, cmd 9, keys 5. At 300 it is ft 30 plus 10 others.
 - Each of those 40 gets `ftplugin/ftdNNN.vim` containing `let b:ftdNNN = 1`, and one ftdetect file, alternating by position:
   - even position, `ftdetect/ftdNNN.vim`: `au BufRead,BufNewFile *.ftdNNN set filetype=ftdNNN`
   - odd position, `ftdetect/ftdNNN.lua`: `vim.filetype.add({ extension = { ftdNNN = 'ftdNNN' } })`
-- With the base set's 10% ftdetect dirs, that is 50 ftdetect dirs at 150. At 300 it is about 70; PR #54 had 74.
-- Recovered from r24-perf `sand/b150ftd.noindex`. 110 of 150 specs equal `realistic`. The changed ones start at indices 0, 1, 2, 5, 9, 10, 11, 12, 14, …, and bench000/001/005 have `ftd000.vim`, `ftd001.lua`, `ftd005.vim`.
+- Each plugin's base `ftdetect/` file stays alongside the new one.
+- With the base set's 10% ftdetect dirs, that is 50 ftdetect dirs and 47 ftplugin dirs at 150. At 300 it is about 70; PR #54 had 74.
+- Recovered from r24-perf `sand/b150ftd.noindex`. 110 of 150 specs equal `realistic`; the changed ones start at indices 0, 1, 2, 5, 9, 10, 11, 12, 14, …, and bench000/001/002 have `ftd000.vim`, `ftd001.lua`, `ftd002.vim`.
+- Two details are inferred from three files, not checked across all 40: whether `.vim` vs `.lua` alternates by position in the set or by index parity, and the file names.
 
 **`fton`**: `ftd`, with `vim.cmd('filetype plugin indent on')` prepended to init.lua before the manager's setup. This applies to zpack and lazy.nvim alike, as PR #54's `PRE=` did.
 
@@ -170,3 +172,10 @@ PR #54's `all.sh` ran 9 scenarios per size: cs, realistic, file, eager, inits, t
 ## Decisions and dead ends
 - Python 3.9 stdlib only, because the machine's python3 has no `tomllib`. Paths go in `config.json`, overridden by `local.json` (gitignored) and `ZB_*` env vars.
 - The design and log live here, not in the workspace task folder. The workspace session guard blocks a background session from writing there.
+- Gen check against the salvaged r8-perf output (`ref/salvage/r8-perf/b150.noindex`, 150 plugins, seed 1):
+  - `realistic`, `eager`, `inits` and `inits10` configs are byte-identical.
+  - `trig` and `trig10` are identical except the 9 and 3 ft-function targets.
+  - The store is identical except the new `colors/bench000.lua`, which nothing sources at startup.
+  - `ftd` matches every number recorded from r24 (see above).
+  - `cs` matches the recorded bench000 spec line.
+  - Git commit dates are now fixed, so lockfile revs are reproducible.

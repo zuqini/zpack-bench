@@ -21,7 +21,7 @@ SCENARIOS = {
 }
 MATRIX = ['realistic', 'file', 'eager', 'cs', 'inits', 'trig', 'trig10', 'ftd', 'fton']
 MODES = ('vimenter', 'plugin')
-ROW = re.compile(r'^([a-z]+?(?:10)?)_?(\d{3})(?:@(\w+))?$')
+ROW = re.compile(r'^([a-z]+?(?:10)?)_?(\d+)(?:@(\w+))?$')
 QUIT = ['-c', 'doautocmd <nomodeline> UIEnter',
         '-c', "lua vim.schedule(function() vim.schedule(function() vim.cmd('qa!') end) end)"]
 SETUP = "require('zpack').setup({ defaults = { confirm = false } })"

@@ -134,7 +134,8 @@ def run(cfg, base, refs, seeds, oracle, nvim_name, jobs=6):
     jobs_list = []
     for ref in [base] + refs:
         label = trees.label(cfg, ref)
-        tree = trees.build(cfg, ref)
+        aa = label in labels
+        label, tree = label + ('_aa' if aa else ''), trees.build(cfg, ref, aa=aa)
         labels.append(label)
         d = os.path.join(out_dir, label)
         os.makedirs(f'{d}/sub')

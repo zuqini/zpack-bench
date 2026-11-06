@@ -27,4 +27,5 @@ def build(cfg, ref, aa=False):
 
 
 def label(cfg, ref):
-    return ref if len(ref) <= 12 else resolve(cfg, ref)[:12]
+    """The ref itself when it is a short sha or a plain name, else its sha; always safe as a file name."""
+    return ref if len(ref) <= 12 and '/' not in ref and '^' not in ref and '~' not in ref else resolve(cfg, ref)[:12]

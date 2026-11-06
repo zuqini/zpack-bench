@@ -55,6 +55,11 @@ def cmd_check(cfg, a):
     sys.exit(0 if ok else 1)
 
 
+def cmd_selftest(cfg, a):
+    from zbench import selftest
+    sys.exit(0 if selftest.run(cfg, a.ref, a.nvim) else 1)
+
+
 def cmd_fetch(cfg, a):
     from zbench import diff
     diff.fetch_lazyvim(cfg, a.sha)
@@ -119,6 +124,11 @@ def main():
     s.add_argument('--top', type=int, default=45)
     s.add_argument('--nvim', default='nightly')
     s.set_defaults(fn=cmd_sprof)
+
+    s = sub.add_parser('selftest', help='tiny generated sets: determinism, every scenario starts, A/A diff clean')
+    s.add_argument('--ref', default='origin/HEAD')
+    s.add_argument('--nvim', default='nightly')
+    s.set_defaults(fn=cmd_selftest)
 
     s = sub.add_parser('fetch-lazyvim', help="download LazyVim's source as data (parsed, never executed)")
     s.add_argument('sha', nargs='?', help='default: current main')
